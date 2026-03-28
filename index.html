@@ -728,15 +728,27 @@ function renderMeals(){
           <div class="ao-line"></div>
         </div>
         <div id="ao-${meal.id}" style="display:none;" class="add-option-form">
-          <div class="ao-form-title">➕ אופציה חדשה לארוחה זו</div>
-          <input type="text" class="ao-input" id="ao-name-${meal.id}" placeholder="תיאור הארוחה...">
-          <div class="ao-macros-row">
-            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--accent)">קל׳</div><input type="number" class="ao-num" id="ao-cal-${meal.id}" placeholder="0" min="0"></div>
-            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--accent3)">חלבון</div><input type="number" class="ao-num" id="ao-p-${meal.id}" placeholder="0" min="0" step="0.1"></div>
-            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--warning)">שומן</div><input type="number" class="ao-num" id="ao-f-${meal.id}" placeholder="0" min="0" step="0.1"></div>
-            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--accent2)">פחמ׳</div><input type="number" class="ao-num" id="ao-c-${meal.id}" placeholder="0" min="0" step="0.1"></div>
+          <div class="ao-form-title">➕ אופציה חדשה — בחרי מרכיבים מהמאגר</div>
+          <div style="position:relative;margin-bottom:7px;">
+            <input type="text" class="ao-input" id="ao-search-${meal.id}" placeholder="🔍 חפשי מרכיב... עוף, גבינה, לחם..." oninput="aoSearch('${meal.id}')" onblur="aoHideResults('${meal.id}')" autocomplete="off" style="margin-bottom:0;">
+            <div id="ao-results-${meal.id}" style="display:none;position:absolute;top:100%;right:0;left:0;background:var(--surface2);border:1px solid var(--accent2);border-radius:8px;max-height:180px;overflow-y:auto;z-index:300;"></div>
           </div>
-          <button class="ao-save-btn" onclick="saveNewOption('${meal.id}')">💾 הוסף לתפריט</button>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+            <input type="number" class="ao-num" id="ao-amount-${meal.id}" value="100" min="1" max="2000" style="width:80px;flex:none;">
+            <span style="font-size:12px;color:var(--text-dim);">גרם</span>
+            <button id="ao-add-${meal.id}" onclick="aoAddItem('${meal.id}')" disabled class="ao-save-btn" style="flex:1;padding:7px;">➕ הוסף מרכיב</button>
+          </div>
+          <div id="ao-items-${meal.id}" style="margin-bottom:8px;"></div>
+          <div id="ao-total-${meal.id}" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:none;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:11px;color:var(--text-dim);">
+              <span id="ao-tp-${meal.id}" style="color:var(--accent3);">חלבון: 0g</span> &nbsp;
+              <span id="ao-tf-${meal.id}" style="color:var(--warning);">שומן: 0g</span> &nbsp;
+              <span id="ao-tc-${meal.id}" style="color:var(--accent2);">פחמ׳: 0g</span>
+            </div>
+            <span id="ao-tcal-${meal.id}" style="font-size:18px;font-weight:800;color:var(--accent);">0 קל׳</span>
+          </div>
+          <input type="text" class="ao-input" id="ao-name-${meal.id}" placeholder="שם הארוחה (אופציונלי — ימולא אוטומטית)">
+          <button class="ao-save-btn" onclick="saveNewOption('${meal.id}')" style="margin-top:6px;">💾 הוסף לתפריט</button>
         </div>
         <button class="log-btn" id="logBtn-${meal.id}" onclick="logMeal('${meal.id}')" ${isLogged?'':'disabled'}>${isLogged?'✏️ עדכן':'✅ רשום ארוחה'}</button>
         ${(isLogged||isCustomLogged)?`<button class="cancel-meal-btn" onclick="cancelMeal('${meal.id}')">🗑️ בטל רישום</button>`:''}
@@ -947,21 +959,127 @@ function finishDrag(targetCard){
   showToast('↕️ הסדר עודכן');
 }
 function toggleAddOption(mealId){
-  var el=document.getElementById('ao-'+mealId);
-  el.style.display=el.style.display==='none'?'block':'none';
+  const el=document.getElementById('ao-'+mealId);
+  const showing=el.style.display!=='none';
+  el.style.display=showing?'none':'block';
+  if(!showing){
+    // reset state
+    aoItems[mealId]=[];
+    aoSelected[mealId]=null;
+    document.getElementById('ao-search-'+mealId).value='';
+    document.getElementById('ao-name-'+mealId).value='';
+    document.getElementById('ao-amount-'+mealId).value=100;
+    document.getElementById('ao-add-'+mealId).disabled=true;
+    renderAoItems(mealId);
+  }
 }
+
+// per-meal state for add-option builder
+const aoItems={};
+const aoSelected={};
+let aoSearchTimers={};
+
+function aoSearch(mealId){
+  clearTimeout(aoSearchTimers[mealId]);
+  aoSearchTimers[mealId]=setTimeout(()=>{
+    const q=document.getElementById('ao-search-'+mealId).value.trim().toLowerCase();
+    const res=document.getElementById('ao-results-'+mealId);
+    const filtered=getAllFoods().filter(f=>q===''||f.n.toLowerCase().includes(q)).slice(0,30);
+    if(!filtered.length){res.style.display='none';return;}
+    const all=getAllFoods();
+    res.innerHTML=filtered.map(f=>`
+      <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;" onmousedown="aoSelectFood('${mealId}',${all.indexOf(f)})">
+        <span>${f.n} <span style="color:var(--text-muted);font-size:10px;">${f.cat}</span></span>
+        <span style="color:var(--accent);font-weight:700;">${f.cal} קל</span>
+      </div>`).join('');
+    res.style.display='block';
+  },100);
+}
+
+function aoHideResults(mealId){
+  setTimeout(()=>{const r=document.getElementById('ao-results-'+mealId);if(r)r.style.display='none';},200);
+}
+
+function aoSelectFood(mealId,idx){
+  aoSelected[mealId]=getAllFoods()[idx];
+  document.getElementById('ao-search-'+mealId).value=aoSelected[mealId].n;
+  document.getElementById('ao-results-'+mealId).style.display='none';
+  document.getElementById('ao-add-'+mealId).disabled=false;
+}
+
+function aoAddItem(mealId){
+  const food=aoSelected[mealId];
+  if(!food)return;
+  const amount=parseFloat(document.getElementById('ao-amount-'+mealId).value)||100;
+  const r=amount/100;
+  if(!aoItems[mealId])aoItems[mealId]=[];
+  aoItems[mealId].push({
+    name:food.n, amount,
+    cal:Math.round(food.cal*r),
+    p:Math.round(food.p*r*10)/10,
+    f:Math.round(food.f*r*10)/10,
+    c:Math.round(food.c*r*10)/10,
+  });
+  aoSelected[mealId]=null;
+  document.getElementById('ao-search-'+mealId).value='';
+  document.getElementById('ao-amount-'+mealId).value=100;
+  document.getElementById('ao-add-'+mealId).disabled=true;
+  renderAoItems(mealId);
+}
+
+function aoRemoveItem(mealId,idx){
+  aoItems[mealId].splice(idx,1);
+  renderAoItems(mealId);
+}
+
+function renderAoItems(mealId){
+  const items=aoItems[mealId]||[];
+  const listEl=document.getElementById('ao-items-'+mealId);
+  const totalEl=document.getElementById('ao-total-'+mealId);
+  if(!listEl)return;
+  if(!items.length){
+    listEl.innerHTML='';
+    if(totalEl)totalEl.style.display='none';
+    return;
+  }
+  listEl.innerHTML=items.map((item,i)=>`
+    <div style="display:flex;align-items:center;padding:6px 8px;background:var(--surface2);border-radius:7px;margin-bottom:3px;font-size:12px;">
+      <div style="flex:1;"><b>${item.name}</b> <span style="color:var(--text-dim);">${item.amount}g</span>
+      <div style="font-size:10px;color:var(--text-muted);">חלבון: ${item.p}g · שומן: ${item.f}g · פחמ׳: ${item.c}g</div></div>
+      <span style="font-weight:700;color:var(--accent);margin:0 8px;">${item.cal}</span>
+      <button onclick="aoRemoveItem('${mealId}',${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;">🗑️</button>
+    </div>`).join('');
+  const tot=items.reduce((a,i)=>({cal:a.cal+i.cal,p:a.p+i.p,f:a.f+i.f,c:a.c+i.c}),{cal:0,p:0,f:0,c:0});
+  if(totalEl){
+    totalEl.style.display='flex';
+    document.getElementById('ao-tcal-'+mealId).textContent=Math.round(tot.cal)+' קל׳';
+    document.getElementById('ao-tp-'+mealId).textContent='חלבון: '+Math.round(tot.p*10)/10+'g';
+    document.getElementById('ao-tf-'+mealId).textContent='שומן: '+Math.round(tot.f*10)/10+'g';
+    document.getElementById('ao-tc-'+mealId).textContent='פחמ׳: '+Math.round(tot.c*10)/10+'g';
+  }
+  // auto-fill name
+  const nameEl=document.getElementById('ao-name-'+mealId);
+  if(nameEl&&!nameEl.dataset.edited){
+    nameEl.value=items.map(i=>i.name+(i.amount!==100?' ('+i.amount+'g)':'')).join(' + ');
+  }
+}
+
 function saveNewOption(mealId){
-  var meal=MEALS.find(function(m){return m.id===mealId;});
+  const meal=MEALS.find(m=>m.id===mealId);
   if(!meal)return;
-  var name=document.getElementById('ao-name-'+mealId).value.trim();
-  var cal=parseFloat(document.getElementById('ao-cal-'+mealId).value)||0;
-  var p=parseFloat(document.getElementById('ao-p-'+mealId).value)||0;
-  var f=parseFloat(document.getElementById('ao-f-'+mealId).value)||0;
-  var c=parseFloat(document.getElementById('ao-c-'+mealId).value)||0;
-  if(!name||!cal){showToast('u26a0ufe0f u05d4u05dbu05e0u05e1u05d9 u05e9u05dd u05d5u05e7u05dcu05d5u05e8u05d9u05d5u05ea');return;}
-  meal.options.push({name:name,cal:cal,p:p,f:f,c:c,_custom:true});
-  renderMeals();showToast('u2705 u05d4u05d0u05d5u05e4u05e6u05d9u05d4 u05e0u05d5u05e1u05e4u05d4!');
-  setTimeout(function(){var card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
+  const items=aoItems[mealId]||[];
+  if(!items.length){showToast('⚠️ הוסיפי לפחות מרכיב אחד');return;}
+  const name=document.getElementById('ao-name-'+mealId).value.trim();
+  if(!name){showToast('⚠️ הכנסי שם לאופציה');return;}
+  meal.options.push({
+    name,
+    ingredients: items.map(i=>({n:i.name,g:i.amount}))
+  });
+  // reset
+  aoItems[mealId]=[];
+  renderMeals();
+  showToast('✅ האופציה נוספה!');
+  setTimeout(()=>{const card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
 }
 function deleteOption(mealId,optIdx){
   var meal=MEALS.find(function(m){return m.id===mealId;});
