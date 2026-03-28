@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מעקב תזונה יומי</title>
+<meta name="theme-color" content="#0f1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="תזונה">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#222535;--border:#2e3248;--accent:#e8845a;--accent2:#6ec6a0;--accent3:#7ab3e0;--text:#f0eee8;--text-dim:#8a8fa8;--text-muted:#4a4f68;--danger:#e06b6b;--warning:#e8c45a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;direction:rtl;}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:200;}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.logo{font-size:18px;font-weight:800;color:var(--accent);}
+.logo span{color:var(--text-dim);font-weight:400;font-size:13px;}
+.daily-summary{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;}
+.summary-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 8px;text-align:center;}
+.summary-card .val{font-size:16px;font-weight:700;line-height:1;}
+.summary-card .lbl{font-size:10px;color:var(--text-dim);margin-top:2px;}
+.cal-val{color:var(--accent);}.pro-val{color:var(--accent3);}.fat-val{color:var(--warning);}.carb-val{color:var(--accent2);}
+.progress-bar-wrap{margin-top:8px;height:5px;background:var(--surface2);border-radius:10px;overflow:hidden;}
+.progress-bar-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width 0.4s ease;}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:11px 14px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.2s;font-family:'Heebo',sans-serif;background:none;border-top:none;border-left:none;border-right:none;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab:hover:not(.active){color:var(--text-dim);}
+
+.main{padding:14px;max-width:600px;margin:0 auto;padding-bottom:50px;}
+.section-title{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:18px;}
+.section-title:first-child{margin-top:0;}
+
+/* MEAL CARD */
+.meal-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden;transition:border-color 0.2s;}
+.meal-card.logged{border-color:var(--accent2);}
+.meal-card.custom-logged{border-color:var(--accent3);}
+.meal-header{display:flex;align-items:center;padding:11px 13px;cursor:pointer;gap:9px;}
+.meal-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.meal-info{flex:1;}
+.meal-name{font-size:13px;font-weight:700;}
+.meal-time{font-size:11px;color:var(--text-dim);margin-top:1px;}
+.meal-cal{font-size:13px;font-weight:700;color:var(--accent);flex-shrink:0;}
+.meal-logged-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--accent2);color:#0f1117;margin-right:5px;}
+.meal-custom-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--accent3);color:#0f1117;margin-right:5px;}
+.meal-arrow{color:var(--text-muted);font-size:11px;transition:transform 0.2s;}
+.meal-card.open .meal-arrow{transform:rotate(180deg);}
+.meal-body{display:none;padding:0 13px 13px;border-top:1px solid var(--border);}
+.meal-card.open .meal-body{display:block;}
+.meal-options-label{font-size:11px;color:var(--text-dim);margin:9px 0 7px;font-weight:600;}
+.option-btn{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:5px;cursor:pointer;transition:all 0.15s;width:100%;text-align:right;font-family:'Heebo',sans-serif;color:var(--text);}
+.option-btn:hover{border-color:var(--accent);background:#2a2e42;}
+.option-btn.selected{border-color:var(--accent2);background:rgba(110,198,160,0.08);}
+.option-name{font-size:12px;font-weight:500;}
+.option-macros{display:flex;gap:6px;font-size:10px;color:var(--text-dim);margin-top:2px;flex-wrap:wrap;}
+.option-macros span{font-weight:600;}
+.option-macros .p{color:var(--accent3);}.option-macros .f{color:var(--warning);}.option-macros .c{color:var(--accent2);}
+.option-cal{font-size:13px;font-weight:700;color:var(--accent);flex-shrink:0;margin-right:8px;}
+.log-btn{width:100%;margin-top:9px;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;transition:opacity 0.2s;}
+.log-btn:hover{opacity:0.85;}.log-btn:disabled{opacity:0.4;cursor:default;}
+.cancel-meal-btn{width:100%;margin-top:6px;padding:9px;background:transparent;color:var(--danger);border:1px solid rgba(224,107,107,0.4);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;transition:all 0.2s;}
+.cancel-meal-btn:hover{background:rgba(224,107,107,0.1);border-color:var(--danger);}
+
+/* DIVIDER with custom meal toggle */
+.custom-meal-toggle{display:flex;align-items:center;gap:8px;padding:8px 0 4px;cursor:pointer;}
+.cmt-line{flex:1;height:1px;background:var(--border);}
+.cmt-btn{font-size:11px;font-weight:700;color:var(--accent3);background:rgba(122,179,224,0.1);border:1px solid rgba(122,179,224,0.3);border-radius:20px;padding:4px 12px;cursor:pointer;white-space:nowrap;font-family:'Heebo',sans-serif;}
+.cmt-btn:hover{background:rgba(122,179,224,0.2);}
+
+/* CUSTOM MEAL BUILDER inside meal card */
+.custom-builder{background:rgba(122,179,224,0.05);border:1px solid rgba(122,179,224,0.2);border-radius:10px;padding:10px;margin-top:8px;}
+.cb-title{font-size:11px;font-weight:700;color:var(--accent3);margin-bottom:8px;}
+.cb-search-wrap{position:relative;margin-bottom:8px;}
+.cb-search{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-family:'Heebo',sans-serif;direction:rtl;}
+.cb-search:focus{outline:none;border-color:var(--accent3);}
+.cb-search::placeholder{color:var(--text-muted);}
+.cb-results{position:absolute;top:100%;right:0;left:0;background:var(--surface2);border:1px solid var(--accent3);border-radius:8px;max-height:180px;overflow-y:auto;z-index:100;margin-top:2px;scrollbar-width:thin;}
+.cb-result-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.cb-result-item:last-child{border-bottom:none;}
+.cb-result-item:hover{background:rgba(122,179,224,0.1);}
+.cb-item-name{font-size:12px;font-weight:500;}
+.cb-item-cal{font-size:11px;color:var(--accent);font-weight:700;}
+.cb-add-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;}
+.cb-amount{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700;color:var(--text);font-family:'Heebo',sans-serif;text-align:center;direction:ltr;}
+.cb-amount:focus{outline:none;border-color:var(--accent);}
+.cb-unit{font-size:12px;color:var(--text-dim);}
+.cb-add{padding:7px 14px;background:var(--accent3);color:#0f1117;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;white-space:nowrap;}
+.cb-add:disabled{opacity:0.35;cursor:default;}
+.cb-items{margin-bottom:8px;}
+.cb-item-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--surface2);border-radius:7px;margin-bottom:4px;font-size:12px;}
+.cb-item-row .ci-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:1px 4px;border-radius:4px;}
+.cb-item-row .ci-del:hover{color:var(--danger);}
+.cb-item-info{flex:1;}
+.cb-item-nm{font-weight:600;}
+.cb-item-mac{font-size:10px;color:var(--text-muted);}
+.cb-item-kcal{font-weight:700;color:var(--accent);margin:0 8px;}
+.cb-total{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.cb-total-label{font-size:12px;color:var(--text-dim);}
+.cb-total-cal{font-size:18px;font-weight:800;color:var(--accent);}
+.cb-save-btn{width:100%;padding:9px;background:var(--accent3);color:#0f1117;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.cb-save-btn:disabled{opacity:0.35;cursor:default;}
+
+/* MEAL ICON COLORS */
+.ic-breakfast{background:rgba(232,132,90,0.15);}.ic-snack1{background:rgba(122,179,224,0.15);}
+.ic-lunch{background:rgba(110,198,160,0.15);}.ic-snack2{background:rgba(232,196,90,0.15);}
+.ic-snack3{background:rgba(160,110,200,0.15);}
+.ic-couple{background:rgba(224,107,107,0.15);}.ic-evening{background:rgba(110,198,160,0.15);}
+
+/* CALCULATOR */
+.calc-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.calc-search-wrap{position:relative;margin-bottom:10px;}
+.calc-search{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--text);font-family:'Heebo',sans-serif;direction:rtl;}
+.calc-search:focus{outline:none;border-color:var(--accent3);}
+.calc-search::placeholder{color:var(--text-muted);}
+.search-results{position:absolute;top:100%;right:0;left:0;background:var(--surface2);border:1px solid var(--accent3);border-radius:10px;max-height:230px;overflow-y:auto;z-index:150;margin-top:3px;scrollbar-width:thin;}
+.search-result-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.search-result-item:last-child{border-bottom:none;}
+.search-result-item:hover{background:rgba(122,179,224,0.1);}
+.sri-name{font-size:13px;font-weight:500;}
+.sri-cat{font-size:10px;color:var(--text-muted);}
+.sri-cal{font-size:12px;font-weight:700;color:var(--accent);}
+.calc-amount-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+.calc-amount-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:15px;font-weight:700;color:var(--text);font-family:'Heebo',sans-serif;text-align:center;direction:ltr;}
+.calc-amount-input:focus{outline:none;border-color:var(--accent);}
+.calc-unit-label{font-size:13px;color:var(--text-dim);white-space:nowrap;}
+.calc-add-btn{padding:9px 18px;background:var(--accent3);color:#0f1117;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.calc-add-btn:disabled{opacity:0.35;cursor:default;}
+.selected-food-preview{background:rgba(122,179,224,0.08);border:1px solid rgba(122,179,224,0.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+.sfp-name{font-size:13px;font-weight:700;color:var(--accent3);margin-bottom:4px;}
+.sfp-macros{display:flex;gap:10px;font-size:11px;flex-wrap:wrap;}
+.calc-items-list{margin-top:4px;}
+.calc-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:5px;}
+.ci-info{flex:1;}
+.ci-name{font-size:12px;font-weight:600;}
+.ci-amount{font-size:11px;color:var(--text-dim);margin-top:1px;}
+.ci-macros{font-size:10px;color:var(--text-muted);margin-top:2px;}
+.ci-cal{font-size:14px;font-weight:700;color:var(--accent);margin:0 10px;}
+.ci-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:3px 6px;border-radius:6px;}
+.ci-del:hover{background:rgba(224,107,107,0.15);color:var(--danger);}
+.calc-total-bar{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;}
+.ctb-label{font-size:13px;color:var(--text-dim);font-weight:600;}
+.ctb-vals{display:flex;gap:14px;align-items:center;}
+.ctb-total-cal{font-size:22px;font-weight:800;color:var(--accent);}
+.ctb-macros{font-size:11px;color:var(--text-dim);}
+.ctb-macros span{display:block;}
+.log-calc-btn{width:100%;margin-top:10px;padding:11px;background:var(--accent2);color:#0f1117;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.clear-calc-btn{width:100%;margin-top:6px;padding:9px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif;}
+.clear-calc-btn:hover{color:var(--danger);border-color:var(--danger);}
+.cat-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.cat-btn{padding:5px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'Heebo',sans-serif;transition:all 0.15s;white-space:nowrap;}
+.cat-btn.active{background:rgba(122,179,224,0.15);border-color:var(--accent3);color:var(--accent3);}
+
+/* DATABASE TAB */
+.db-section{padding-bottom:50px;}
+.db-add-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.db-form-title{font-size:13px;font-weight:700;color:var(--accent3);margin-bottom:12px;}
+.db-form-row{display:flex;gap:8px;margin-bottom:8px;}
+.db-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:'Heebo',sans-serif;direction:rtl;}
+.db-input:focus{outline:none;border-color:var(--accent3);}
+.db-input::placeholder{color:var(--text-muted);}
+.db-input.num{direction:ltr;text-align:center;}
+.db-select{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:'Heebo',sans-serif;}
+.db-select:focus{outline:none;border-color:var(--accent3);}
+.db-macros-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.db-macro-wrap{display:flex;flex-direction:column;gap:3px;}
+.db-macro-label{font-size:10px;font-weight:700;color:var(--text-dim);text-align:center;}
+.db-save-btn{width:100%;padding:10px;background:var(--accent3);color:#0f1117;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.db-list-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;}
+.db-list-title{font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.db-filter-row{display:flex;gap:8px;margin-bottom:10px;}
+.db-search{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-family:'Heebo',sans-serif;direction:rtl;}
+.db-search:focus{outline:none;border-color:var(--accent3);}
+.db-item-row{display:flex;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:4px;gap:8px;}
+.db-item-row.custom-item{border-right:2px solid var(--accent3);}
+.db-item-info{flex:1;}
+.db-item-name{font-size:12px;font-weight:600;}
+.db-item-sub{font-size:10px;color:var(--text-muted);margin-top:2px;}
+.db-item-cal{font-size:12px;font-weight:700;color:var(--accent);flex-shrink:0;}
+.db-item-actions{display:flex;gap:4px;}
+.db-edit-btn{background:none;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Heebo',sans-serif;}
+.db-edit-btn:hover{border-color:var(--accent3);color:var(--accent3);}
+.db-del-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:3px 6px;border-radius:6px;}
+.db-del-btn:hover{background:rgba(224,107,107,0.15);color:var(--danger);}
+.custom-tag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(122,179,224,0.15);color:var(--accent3);margin-right:4px;}
+
+/* WEIGHT */
+.weight-input-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+.weight-input-row{display:flex;gap:10px;align-items:center;}
+.weight-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:18px;font-weight:700;color:var(--text);font-family:'Heebo',sans-serif;text-align:center;direction:ltr;}
+.weight-input:focus{outline:none;border-color:var(--accent);}
+.weight-save-btn{padding:10px 18px;background:var(--accent2);color:#0f1117;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.weight-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.weight-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
+.weight-stat .wval{font-size:20px;font-weight:800;}
+.weight-stat .wlbl{font-size:11px;color:var(--text-dim);margin-top:3px;}
+.wval.current{color:var(--accent);}.wval.goal{color:var(--accent2);}.wval.diff{color:var(--accent3);}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;}
+.chart-title{font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:10px;}
+canvas{width:100%!important;}
+.weight-log-list{margin-top:12px;}
+.weight-log-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:4px;font-size:13px;}
+.weight-log-date{color:var(--text-dim);}
+.weight-log-val{font-weight:700;}
+.weight-log-diff.neg{color:var(--accent2);}.weight-log-diff.pos{color:var(--danger);}
+.weight-delete-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:6px;}
+.weight-delete-btn:hover{color:var(--danger);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:380px;}
+.modal-title{font-size:15px;font-weight:800;margin-bottom:14px;color:var(--accent3);}
+.modal-btns{display:flex;gap:8px;margin-top:14px;}
+.modal-save{flex:1;padding:10px;background:var(--accent3);color:#0f1117;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.modal-cancel{flex:1;padding:10px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+
+.empty-state{text-align:center;color:var(--text-muted);padding:30px 20px;font-size:13px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--accent2);color:#0f1117;padding:10px 20px;border-radius:30px;font-weight:700;font-size:13px;z-index:999;transition:transform 0.3s ease;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.count-badge{display:inline-block;background:var(--accent3);color:#0f1117;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-right:4px;}
+/* Option row with edit/delete */
+.option-row{display:flex;align-items:stretch;gap:4px;margin-bottom:5px;}
+.option-row .option-btn{flex:1;margin-bottom:0;}
+.opt-edit-btn,.opt-del-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;padding:0 9px;transition:all 0.15s;flex-shrink:0;}
+.opt-edit-btn{color:var(--text-dim);}.opt-edit-btn:hover{border-color:var(--accent3);color:var(--accent3);}
+.opt-del-btn{color:var(--text-muted);}.opt-del-btn:hover{border-color:var(--danger);color:var(--danger);}
+/* Add option */
+.add-option-toggle{display:flex;align-items:center;gap:8px;padding:6px 0 2px;cursor:pointer;}
+.ao-line{flex:1;height:1px;background:var(--border);}
+.ao-btn{font-size:11px;font-weight:700;color:var(--accent2);background:rgba(110,198,160,0.1);border:1px solid rgba(110,198,160,0.3);border-radius:20px;padding:4px 12px;cursor:pointer;white-space:nowrap;font-family:'Heebo',sans-serif;}
+.ao-btn:hover{background:rgba(110,198,160,0.2);}
+.add-option-form{background:rgba(110,198,160,0.05);border:1px solid rgba(110,198,160,0.2);border-radius:10px;padding:10px;margin-top:6px;}
+.ao-form-title{font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:8px;}
+.ao-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-family:'Heebo',sans-serif;direction:rtl;margin-bottom:6px;}
+.ao-input:focus{outline:none;border-color:var(--accent2);}
+.ao-macros-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:8px;}
+.ao-macro-wrap{display:flex;flex-direction:column;gap:2px;}
+.ao-macro-lbl{font-size:9px;font-weight:700;text-align:center;}
+.ao-num{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 6px;font-size:13px;font-weight:700;color:var(--text);font-family:'Heebo',sans-serif;text-align:center;direction:ltr;width:100%;}
+.ao-num:focus{outline:none;border-color:var(--accent2);}
+.ao-save-btn{width:100%;padding:9px;background:var(--accent2);color:#0f1117;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
+.modal-field-label{font-size:11px;color:var(--text-dim);margin-bottom:4px;margin-top:10px;font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">🌿 תוכנית 1800 <span>קל/יום · 7 ארוחות</span></div>
+    <div id="dateDisplay" style="font-size:11px;color:var(--text-dim);"></div>
+  </div>
+  <div class="daily-summary">
+    <div class="summary-card"><div class="val cal-val" id="totalCal">0</div><div class="lbl">קלוריות</div></div>
+    <div class="summary-card"><div class="val pro-val" id="totalPro">0g</div><div class="lbl">חלבון</div></div>
+    <div class="summary-card"><div class="val fat-val" id="totalFat">0g</div><div class="lbl">שומן</div></div>
+    <div class="summary-card"><div class="val carb-val" id="totalCarb">0g</div><div class="lbl">פחמימות</div></div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="calProgress" style="width:0%"></div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('meals')">🍽️ ארוחות</button>
+  <button class="tab" onclick="switchTab('calc')">🔢 מחשבון</button>
+  <button class="tab" onclick="switchTab('db')">🗄️ מאגר מזון</button>
+  <button class="tab" onclick="switchTab('weight')">⚖️ משקל</button>
+</div>
+
+<!-- MEALS -->
+<div id="tab-meals" class="main"><div id="mealsContainer"></div></div>
+
+<!-- CALCULATOR -->
+<div id="tab-calc" class="main" style="display:none;">
+  <div class="section-title">מחשבון קלוריות — לאירועים ואכילה חופשית</div>
+  <div class="calc-card">
+    <div class="cat-filter" id="calcCatFilter"></div>
+    <div class="calc-search-wrap">
+      <input type="text" class="calc-search" id="calcSearch" placeholder="🔍 חפשי מזון מהמאגר..." oninput="onCalcSearch()" onblur="hideCalcResults()" autocomplete="off">
+      <div class="search-results" id="calcSearchResults" style="display:none;"></div>
+    </div>
+    <div id="calcFoodPreview" style="display:none;" class="selected-food-preview">
+      <div class="sfp-name" id="cfpName"></div>
+      <div class="sfp-macros" id="cfpMacros"></div>
+    </div>
+    <div class="calc-amount-row">
+      <input type="number" class="calc-amount-input" id="calcAmount" value="100" min="1" max="3000">
+      <span class="calc-unit-label">גרם</span>
+      <button class="calc-add-btn" id="calcAddBtn" onclick="addCalcItem()" disabled>➕ הוסף</button>
+    </div>
+  </div>
+  <div id="calcItemsWrap" style="display:none;" class="calc-card">
+    <div class="calc-items-list" id="calcItemsList"></div>
+    <div class="calc-total-bar">
+      <span class="ctb-label">סה״כ</span>
+      <div class="ctb-vals">
+        <div class="ctb-macros">
+          <span id="ctbPro" style="color:var(--accent3)">חלבון: 0g</span>
+          <span id="ctbFat" style="color:var(--warning)">שומן: 0g</span>
+          <span id="ctbCarb" style="color:var(--accent2)">פחמ׳: 0g</span>
+        </div>
+        <div class="ctb-total-cal" id="ctbCal">0</div>
+      </div>
+    </div>
+    <button class="log-calc-btn" onclick="logCalcToDay()">✅ הוסף לסיכום היום</button>
+    <button class="clear-calc-btn" onclick="clearCalc()">🗑️ נקה הכל</button>
+  </div>
+</div>
+
+<!-- DATABASE -->
+<div id="tab-db" class="main" style="display:none;">
+  <div class="db-section">
+    <div class="section-title">הוסף פריט חדש למאגר</div>
+    <div class="db-add-card">
+      <div class="db-form-title">➕ פריט מזון חדש</div>
+      <div class="db-form-row">
+        <input type="text" class="db-input" id="dbNewName" placeholder="שם המזון (עברית)">
+      </div>
+      <div class="db-form-row">
+        <select class="db-select" id="dbNewCat"></select>
+      </div>
+      <div class="db-macros-row">
+        <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--accent)">קלוריות</div><input type="number" class="db-input num" id="dbNewCal" placeholder="0" min="0"></div>
+        <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--accent3)">חלבון g</div><input type="number" class="db-input num" id="dbNewP" placeholder="0" min="0" step="0.1"></div>
+        <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--warning)">שומן g</div><input type="number" class="db-input num" id="dbNewF" placeholder="0" min="0" step="0.1"></div>
+        <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--accent2)">פחמ׳ g</div><input type="number" class="db-input num" id="dbNewC" placeholder="0" min="0" step="0.1"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;text-align:center;">כל הערכים הם לכל 100 גרם</div>
+      <button class="db-save-btn" onclick="addCustomFood()">💾 הוסף למאגר</button>
+    </div>
+
+    <div class="section-title">כל פריטי המאגר</div>
+    <div class="db-list-card">
+      <div class="db-filter-row">
+        <input type="text" class="db-search" id="dbSearch" placeholder="🔍 חפש פריט..." oninput="renderDbList()">
+        <select class="db-select" id="dbCatFilter" style="flex:0 0 110px;" onchange="renderDbList()"><option value="">כל הקטגוריות</option></select>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;" id="dbCount"></div>
+      <div id="dbList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- WEIGHT -->
+<div id="tab-weight" class="main" style="display:none;">
+  <div class="section-title">רשום משקל היום</div>
+  <div class="weight-input-card">
+    <div class="weight-input-row">
+      <input type="number" class="weight-input" id="weightInput" placeholder="102.0" step="0.1" min="40" max="200">
+      <button class="weight-save-btn" onclick="saveWeight()">שמור</button>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:7px;text-align:center;">מומלץ לשקול בבוקר, לפני אכילה</div>
+  </div>
+  <div class="weight-stats">
+    <div class="weight-stat"><div class="wval current" id="statCurrent">102</div><div class="wlbl">נוכחי</div></div>
+    <div class="weight-stat"><div class="wval goal">75</div><div class="wlbl">יעד</div></div>
+    <div class="weight-stat"><div class="wval diff" id="statDiff">27</div><div class="wlbl">נותר</div></div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">גרף ירידה במשקל</div>
+    <canvas id="weightChart" height="180"></canvas>
+    <div class="weight-log-list" id="weightLogList"></div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal" style="display:none;" onclick="closeEditModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">✏️ עריכת פריט מזון</div>
+    <input type="hidden" id="editIdx">
+    <div class="db-form-row"><input type="text" class="db-input" id="editName" placeholder="שם המזון"></div>
+    <div class="db-form-row"><select class="db-select" id="editCat"></select></div>
+    <div class="db-macros-row">
+      <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--accent)">קלוריות</div><input type="number" class="db-input num" id="editCal" min="0"></div>
+      <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--accent3)">חלבון</div><input type="number" class="db-input num" id="editP" min="0" step="0.1"></div>
+      <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--warning)">שומן</div><input type="number" class="db-input num" id="editF" min="0" step="0.1"></div>
+      <div class="db-macro-wrap"><div class="db-macro-label" style="color:var(--accent2)">פחמ׳</div><input type="number" class="db-input num" id="editC" min="0" step="0.1"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="document.getElementById('editModal').style.display='none'">ביטול</button>
+      <button class="modal-save" onclick="saveEdit()">💾 שמור שינויים</button>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION EDIT MODAL - full ingredient builder -->
+<div class="modal-overlay" id="optEditModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:440px;max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
+    <div class="modal-title">✏️ עריכת אופציה</div>
+    <input type="hidden" id="oem-mealId">
+    <input type="hidden" id="oem-optIdx">
+
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">הוסיפי/מחקי מרכיבים — הקלוריות מחושבות אוטומטית</div>
+
+    <!-- Ingredient builder -->
+    <div style="background:rgba(122,179,224,0.06);border:1px solid rgba(122,179,224,0.2);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="position:relative;margin-bottom:7px;">
+        <input type="text" class="db-input" id="oem-ing-search" placeholder="🔍 חפשי מרכיב מהמאגר..." oninput="oemIngSearch()" onblur="oemHideResults()" autocomplete="off" style="margin-bottom:0;">
+        <div id="oem-ing-results" style="display:none;position:absolute;top:100%;right:0;left:0;background:var(--surface2);border:1px solid var(--accent3);border-radius:8px;max-height:160px;overflow-y:auto;z-index:600;"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <input type="number" class="ao-num" id="oem-ing-amount" value="100" min="1" max="2000" style="width:80px;flex:none;">
+        <span style="font-size:12px;color:var(--text-dim);">גרם</span>
+        <button onclick="oemAddIngredient()" id="oem-ing-add" disabled style="flex:1;padding:7px;background:var(--accent3);color:#0f1117;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">➕ הוסף</button>
+      </div>
+      <div id="oem-ing-list"></div>
+    </div>
+
+    <!-- Name field -->
+    <input type="text" class="db-input" id="oem-name" placeholder="שם הארוחה (אופציונלי — ימולא אוטומטית)" style="margin-bottom:10px;">
+
+    <!-- Live totals display -->
+    <div id="oem-totals-bar" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div style="font-size:11px;color:var(--text-dim);">
+        <span id="oem-disp-p" style="color:var(--accent3);">חלבון: 0g</span> &nbsp;
+        <span id="oem-disp-f" style="color:var(--warning);">שומן: 0g</span> &nbsp;
+        <span id="oem-disp-c" style="color:var(--accent2);">פחמ׳: 0g</span>
+      </div>
+      <div style="font-size:20px;font-weight:800;color:var(--accent);" id="oem-disp-cal">0 קל׳</div>
+    </div>
+    <input type="hidden" id="oem-cal">
+    <input type="hidden" id="oem-p">
+    <input type="hidden" id="oem-f">
+    <input type="hidden" id="oem-c">
+
+    <div class="modal-btns" style="margin-top:12px;">
+      <button class="modal-cancel" onclick="document.getElementById('optEditModal').style.display='none'">ביטול</button>
+      <button class="modal-save" onclick="saveOptionEdit()">💾 שמור שינויים</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GOAL_CAL=1800,GOAL_WEIGHT=75;
+
+// ============ MEALS (7) ============
+const MEALS=[
+  {id:'breakfast',name:'ארוחת בוקר',time:'06:00–07:00',icon:'🌅',iconClass:'ic-breakfast',targetCal:250,options:[
+    {name:'ביצים קשות + גבינה לבנה + ירקות',ingredients:[{n:'ביצה שלמה',g:110},{n:'גבינה לבנה 5%',g:100},{n:'עגבנייה',g:80},{n:'מלפפון',g:80}]},
+    {name:'קוטג׳ + לחם קל + מלפפון',ingredients:[{n:'קוטג׳ 5%',g:200},{n:'לחם קל (דיאט)',g:50},{n:'מלפפון',g:100}]},
+    {name:'ביצים מקושקשות + לחם שיפון',ingredients:[{n:'ביצה שלמה',g:110},{n:'לחם שיפון',g:40},{n:'עגבנייה',g:80}]},
+    {name:'טונה + עגבנייה + לחם מלא',ingredients:[{n:'טונה בקופסה (במים)',g:120},{n:'עגבנייה',g:100},{n:'לחם מלא',g:40}]},
+    {name:'חביתה + גבינה צהובה + ירק',ingredients:[{n:'ביצה שלמה',g:110},{n:'גבינה צהובה דלת שומן',g:20},{n:'פלפל אדום',g:80}]},
+    {name:'סלמון מעושן + גבינה לבנה + לחם',ingredients:[{n:'סלמון מעושן',g:60},{n:'גבינה לבנה 5%',g:80},{n:'לחם מלא',g:35}]},
+    {name:'ביצים קשות × 3 + גבינה בולגרית + שרי',ingredients:[{n:'ביצה שלמה',g:165},{n:'גבינה בולגרית',g:30},{n:'עגבניות שרי',g:80}]},
+    {name:'קוטג׳ + גרעיני דלעת + מלפפון',ingredients:[{n:'קוטג׳ 3%',g:150},{n:'גרעיני דלעת',g:15},{n:'מלפפון',g:100}]},
+  ]},
+  {id:'snack1',name:'נשנוש בוקר',time:'08:30–09:00',icon:'🍎',iconClass:'ic-snack1',targetCal:150,options:[
+    {name:'תפוח + שקדים',ingredients:[{n:'תפוח',g:150},{n:'שקדים',g:17}]},
+    {name:'גזר בייבי + חומוס',ingredients:[{n:'גזר',g:150},{n:'חומוס ממרח (2כפות)',g:40}]},
+    {name:'תמרים + אגוזי מלך',ingredients:[{n:'תמר',g:25},{n:'אגוזי מלך',g:15}]},
+    {name:'מלפפון + גבינה לבנה',ingredients:[{n:'מלפפון',g:150},{n:'גבינה לבנה 5%',g:100}]},
+    {name:'אפרסק + שקדים',ingredients:[{n:'אפרסק',g:150},{n:'שקדים',g:20}]},
+    {name:'קוטג׳ + קרקרים',ingredients:[{n:'קוטג׳ 5%',g:100},{n:'קרקרים (ממוצע)',g:25}]},
+    {name:'ירקות + גואקמולי',ingredients:[{n:'גזר',g:60},{n:'סלרי',g:40},{n:'פלפל אדום',g:40},{n:'אבוקדו',g:50}]},
+    {name:'אגוזי ברזיל + תפוח',ingredients:[{n:'אגוזי ברזיל',g:10},{n:'תפוח',g:120}]},
+  ]},
+  {id:'lunch',name:'ארוחת צהריים',time:'12:00–13:00',icon:'🥗',iconClass:'ic-lunch',targetCal:380,options:[
+    {name:'חזה עוף + סלט + שמן זית',ingredients:[{n:'חזה עוף מבושל',g:150},{n:'חסה',g:80},{n:'עגבנייה',g:80},{n:'מלפפון',g:60},{n:'שמן זית',g:10}]},
+    {name:'טונה + ביצה + סלט + לחם',ingredients:[{n:'טונה בקופסה (במים)',g:120},{n:'ביצה שלמה',g:55},{n:'עגבנייה',g:80},{n:'מלפפון',g:60},{n:'לחם קל (דיאט)',g:30}]},
+    {name:'ביצות עין + ירקות מוקפצים + פיתה',ingredients:[{n:'ביצה שלמה',g:110},{n:'פלפל אדום',g:60},{n:'קישוא',g:80},{n:'פטריות',g:60},{n:'פיתה לבנה',g:40}]},
+    {name:'סרדינים + סלט + לחם שיפון',ingredients:[{n:'סרדינים בשמן',g:100},{n:'חסה',g:80},{n:'עגבנייה',g:80},{n:'לחם שיפון',g:40}]},
+    {name:'שניצל הודו אפוי + סלט קייסר',ingredients:[{n:'הודו חזה מבושל',g:130},{n:'חסה',g:100},{n:'עגבנייה',g:60},{n:'שמן זית',g:8}]},
+    {name:'סלמון + סלט ירקות + לימון',ingredients:[{n:'סלמון טרי',g:120},{n:'חסה',g:80},{n:'עגבנייה',g:80},{n:'מלפפון',g:60},{n:'לימון',g:20}]},
+    {name:'קציצות עוף + טאבולה + גבינה',ingredients:[{n:'חזה עוף מבושל',g:120},{n:'פטריות',g:60},{n:'עגבנייה',g:80},{n:'גבינה לבנה 5%',g:60}]},
+    {name:'ספגטי + טונה + חצילים',ingredients:[{n:'פסטה מבושלת',g:170},{n:'טונה בקופסה (במים)',g:80},{n:'חציל',g:80},{n:'עגבניות שרי',g:60}]},
+  ]},
+  {id:'snack2',name:'נשנוש אחה"צ',time:'14:30–15:00',icon:'🧀',iconClass:'ic-snack2',targetCal:150,options:[
+    {name:'גבינה צהובה + קרקרים',ingredients:[{n:'גבינה צהובה דלת שומן',g:30},{n:'קרקרים (ממוצע)',g:25}]},
+    {name:'אגוזי קשיו',ingredients:[{n:'אגוזי קשיו',g:25}]},
+    {name:'ירקות + חומוס',ingredients:[{n:'גזר',g:80},{n:'סלרי',g:40},{n:'פלפל אדום',g:40},{n:'חומוס ממרח (2כפות)',g:40}]},
+    {name:'ביצים קשות × 2',ingredients:[{n:'ביצה שלמה',g:110}]},
+    {name:'עדשים מבושלות + עגבנייה',ingredients:[{n:'עדשים מבושלות',g:100},{n:'עגבנייה',g:80}]},
+    {name:'קוטג׳ + מלפפון',ingredients:[{n:'קוטג׳ 5%',g:100},{n:'מלפפון',g:100}]},
+    {name:'חצי אבוקדו + עגבניות שרי',ingredients:[{n:'אבוקדו',g:75},{n:'עגבניות שרי',g:100}]},
+    {name:'שקדים + תאנים',ingredients:[{n:'שקדים',g:20},{n:'תמר',g:20}]},
+  ]},
+  {id:'snack3',name:'נשנוש שני אחה"צ',time:'16:30–17:00',icon:'🫐',iconClass:'ic-snack3',targetCal:100,options:[
+    {name:'תות שדה',ingredients:[{n:'תות שדה',g:200}]},
+    {name:'נקטרינה / אפרסק',ingredients:[{n:'נקטרינה',g:150}]},
+    {name:'מלון / אבטיח',ingredients:[{n:'מלון',g:200}]},
+    {name:'שקדים + תמר',ingredients:[{n:'שקדים',g:15},{n:'תמר',g:20}]},
+    {name:'תפוז',ingredients:[{n:'תפוז',g:150}]},
+    {name:'ענבים',ingredients:[{n:'ענבים',g:120}]},
+    {name:'אגס',ingredients:[{n:'אגס',g:130}]},
+    {name:'קיווי × 2',ingredients:[{n:'קיווי',g:150}]},
+  ]},
+  {id:'couple',name:'ארוחה עם הבעל 💑',time:'19:00–20:00',icon:'❤️',iconClass:'ic-couple',targetCal:420,options:[
+    {name:'פסטה + רוטב עגבניות + עוף',ingredients:[{n:'פסטה מבושלת',g:170},{n:'חזה עוף מבושל',g:100},{n:'עגבניות שרי',g:80}]},
+    {name:'אורז + שניצל עוף',ingredients:[{n:'אורז לבן מבושל',g:180},{n:'שניצל עוף אפוי',g:120}]},
+    {name:'תפוחי אדמה + נתח בקר',ingredients:[{n:'תפוח אדמה מבושל',g:200},{n:'בשר בקר טחון 90%',g:120}]},
+    {name:'פיתה + קציצות בשר + סלט',ingredients:[{n:'פיתה לבנה',g:65},{n:'בשר בקר טחון 80%',g:100},{n:'עגבנייה',g:60},{n:'מלפפון',g:60}]},
+    {name:'ספגטי בולונז׳ רזה',ingredients:[{n:'פסטה מבושלת',g:170},{n:'בשר בקר טחון 90%',g:100},{n:'עגבניות שרי',g:60}]},
+    {name:'אורז + שיפודי עוף + סלט',ingredients:[{n:'אורז לבן מבושל',g:170},{n:'חזה עוף מבושל',g:120},{n:'עגבנייה',g:60}]},
+    {name:'קוסקוס + ירקות + עוף',ingredients:[{n:'קוסקוס מבושל',g:170},{n:'חזה עוף מבושל',g:100},{n:'קישוא',g:80},{n:'גזר',g:60}]},
+    {name:'פיתה + שוורמה עוף + טחינה',ingredients:[{n:'פיתה לבנה',g:65},{n:'חזה עוף מבושל',g:120},{n:'טחינה מוכנה',g:20}]},
+  ]},
+  {id:'evening',name:'נשנוש לילה',time:'20:30–21:00',icon:'🌙',iconClass:'ic-evening',targetCal:100,options:[
+    {name:'קוטג׳ 3%',ingredients:[{n:'קוטג׳ 3%',g:100}]},
+    {name:'גבינה לבנה + מלפפון',ingredients:[{n:'גבינה לבנה 5%',g:100},{n:'מלפפון',g:100}]},
+    {name:'גבינה צהובה + ירק',ingredients:[{n:'גבינה צהובה דלת שומן',g:30},{n:'מלפפון',g:100}]},
+    {name:'שקדים',ingredients:[{n:'שקדים',g:17}]},
+    {name:'ביצה קשה + גבינה',ingredients:[{n:'ביצה שלמה',g:55},{n:'גבינה לבנה 5%',g:20}]},
+    {name:'גבינת ריקוטה + שרי',ingredients:[{n:'ריקוטה',g:80},{n:'עגבניות שרי',g:80}]},
+    {name:'עוף קר + ירק',ingredients:[{n:'חזה עוף מבושל',g:60},{n:'מלפפון',g:80}]},
+    {name:'זיתים + גבינה לבנה',ingredients:[{n:'שמן זית',g:5},{n:'גבינה לבנה 5%',g:50},{n:'מלפפון',g:80}]},
+  ]},
+];
+
+// ============ BUILT-IN FOOD DB ============
+const BUILTIN_FOODS=[
+  {n:'עגבנייה',cat:'ירקות',cal:18,p:0.9,f:0.2,c:3.9},{n:'מלפפון',cat:'ירקות',cal:15,p:0.7,f:0.1,c:3.1},
+  {n:'גזר',cat:'ירקות',cal:41,p:0.9,f:0.2,c:9.6},{n:'פלפל אדום',cat:'ירקות',cal:31,p:1.0,f:0.3,c:6.0},
+  {n:'פלפל ירוק',cat:'ירקות',cal:20,p:0.9,f:0.2,c:4.6},{n:'חסה',cat:'ירקות',cal:15,p:1.4,f:0.2,c:2.9},
+  {n:'כרוב',cat:'ירקות',cal:25,p:1.3,f:0.1,c:5.8},{n:'קישוא',cat:'ירקות',cal:17,p:1.2,f:0.3,c:3.1},
+  {n:'ברוקולי',cat:'ירקות',cal:34,p:2.8,f:0.4,c:6.6},{n:'כרובית',cat:'ירקות',cal:25,p:2.0,f:0.3,c:5.0},
+  {n:'פטריות',cat:'ירקות',cal:22,p:3.1,f:0.3,c:3.3},{n:'בצל',cat:'ירקות',cal:40,p:1.1,f:0.1,c:9.3},
+  {n:'שום',cat:'ירקות',cal:149,p:6.4,f:0.5,c:33},{n:'תרד',cat:'ירקות',cal:23,p:2.9,f:0.4,c:3.6},
+  {n:'חציל',cat:'ירקות',cal:25,p:1.0,f:0.2,c:5.9},{n:'עגבניות שרי',cat:'ירקות',cal:18,p:0.9,f:0.2,c:3.9},
+  {n:'אספרגוס',cat:'ירקות',cal:20,p:2.2,f:0.1,c:3.9},{n:'סלרי',cat:'ירקות',cal:16,p:0.7,f:0.2,c:3.0},
+  {n:'שעועית ירוקה',cat:'ירקות',cal:31,p:1.8,f:0.2,c:7.0},{n:'צנוניות',cat:'ירקות',cal:16,p:0.7,f:0.1,c:3.4},
+  {n:'תפוח',cat:'פירות',cal:52,p:0.3,f:0.2,c:14},{n:'אגס',cat:'פירות',cal:57,p:0.4,f:0.1,c:15},
+  {n:'אפרסק',cat:'פירות',cal:39,p:0.9,f:0.3,c:10},{n:'נקטרינה',cat:'פירות',cal:44,p:1.1,f:0.3,c:11},
+  {n:'תות שדה',cat:'פירות',cal:32,p:0.7,f:0.3,c:7.7},{n:'אבטיח',cat:'פירות',cal:30,p:0.6,f:0.2,c:7.6},
+  {n:'מלון',cat:'פירות',cal:34,p:0.8,f:0.2,c:8.2},{n:'ענבים',cat:'פירות',cal:67,p:0.6,f:0.4,c:17},
+  {n:'תפוז',cat:'פירות',cal:47,p:0.9,f:0.1,c:12},{n:'קיווי',cat:'פירות',cal:61,p:1.1,f:0.5,c:15},
+  {n:'מנגו',cat:'פירות',cal:60,p:0.8,f:0.4,c:15},{n:'אננס',cat:'פירות',cal:50,p:0.5,f:0.1,c:13},
+  {n:'אוכמניות',cat:'פירות',cal:57,p:0.7,f:0.3,c:14},{n:'תמר',cat:'פירות',cal:277,p:1.8,f:0.2,c:75},
+  {n:'צימוקים',cat:'פירות',cal:299,p:3.1,f:0.5,c:79},{n:'אבוקדו',cat:'פירות',cal:160,p:2.0,f:15,c:9},
+  {n:'לימון',cat:'פירות',cal:29,p:1.1,f:0.3,c:9},{n:'פומלה',cat:'פירות',cal:38,p:0.8,f:0.1,c:10},
+  {n:'אפרסמון',cat:'פירות',cal:70,p:0.6,f:0.2,c:19},
+  {n:'חזה עוף מבושל',cat:'עוף ובשר',cal:165,p:31,f:3.6,c:0},{n:'שניצל עוף אפוי',cat:'עוף ובשר',cal:195,p:28,f:7,c:6},
+  {n:'ירך עוף ללא עור',cat:'עוף ובשר',cal:177,p:24,f:9,c:0},{n:'הודו חזה מבושל',cat:'עוף ובשר',cal:157,p:30,f:3.0,c:0},
+  {n:'בשר בקר טחון 90%',cat:'עוף ובשר',cal:215,p:26,f:12,c:0},{n:'בשר בקר טחון 80%',cat:'עוף ובשר',cal:254,p:26,f:17,c:0},
+  {n:'אנטריקוט',cat:'עוף ובשר',cal:271,p:26,f:18,c:0},{n:'פרגית',cat:'עוף ובשר',cal:209,p:26,f:11,c:0},
+  {n:'כבד עוף',cat:'עוף ובשר',cal:172,p:27,f:6,c:1},{n:'שוורמה עוף',cat:'עוף ובשר',cal:218,p:27,f:10,c:4},
+  {n:'נקניקיית עוף',cat:'עוף ובשר',cal:140,p:14,f:8,c:3},{n:'קבב בקר',cat:'עוף ובשר',cal:250,p:22,f:17,c:2},
+  {n:'סטייק פילה',cat:'עוף ובשר',cal:215,p:30,f:10,c:0},{n:'שוק עוף ללא עור',cat:'עוף ובשר',cal:181,p:25,f:9,c:0},
+  {n:'סלמון טרי',cat:'דגים',cal:208,p:20,f:13,c:0},{n:'טונה בקופסה (במים)',cat:'דגים',cal:116,p:26,f:1,c:0},
+  {n:'סרדינים בשמן',cat:'דגים',cal:208,p:25,f:11,c:0},{n:'בורי',cat:'דגים',cal:128,p:22,f:4,c:0},
+  {n:'לוקוס',cat:'דגים',cal:105,p:20,f:2,c:0},{n:'דג מוסר',cat:'דגים',cal:97,p:19,f:2,c:0},
+  {n:'סלמון מעושן',cat:'דגים',cal:117,p:18,f:4,c:0},{n:'קלמארי',cat:'דגים',cal:92,p:16,f:1,c:3},
+  {n:'שרימפס',cat:'דגים',cal:99,p:24,f:0.3,c:0},{n:'פורל',cat:'דגים',cal:148,p:21,f:7,c:0},
+  {n:'ביצה שלמה',cat:'ביצים וחלב',cal:155,p:13,f:11,c:1},{n:'חלבון ביצה',cat:'ביצים וחלב',cal:52,p:11,f:0.2,c:1},
+  {n:'גבינה לבנה 5%',cat:'ביצים וחלב',cal:97,p:12,f:5,c:2},{n:'קוטג׳ 3%',cat:'ביצים וחלב',cal:73,p:9,f:2,c:4},
+  {n:'קוטג׳ 5%',cat:'ביצים וחלב',cal:95,p:10,f:5,c:3},{n:'גבינה צהובה 28%',cat:'ביצים וחלב',cal:353,p:25,f:27,c:2},
+  {n:'גבינה צהובה דלת שומן',cat:'ביצים וחלב',cal:245,p:28,f:13,c:2},{n:'גבינה בולגרית',cat:'ביצים וחלב',cal:264,p:17,f:21,c:2},
+  {n:'ריקוטה',cat:'ביצים וחלב',cal:174,p:11,f:13,c:3},{n:'שמנת חמוצה 15%',cat:'ביצים וחלב',cal:164,p:2.9,f:15,c:4},
+  {n:'חלב 3%',cat:'ביצים וחלב',cal:61,p:3.2,f:3.3,c:4.8},{n:'חלב 1%',cat:'ביצים וחלב',cal:42,p:3.4,f:1,c:5},
+  {n:'גבינת מוצרלה',cat:'ביצים וחלב',cal:280,p:22,f:20,c:2},{n:'גבינת פטה',cat:'ביצים וחלב',cal:264,p:14,f:21,c:4},
+  {n:'לחם לבן',cat:'לחם ופחמימות',cal:265,p:9,f:3,c:53},{n:'לחם מלא',cat:'לחם ופחמימות',cal:247,p:13,f:4,c:45},
+  {n:'לחם שיפון',cat:'לחם ופחמימות',cal:258,p:8,f:3,c:49},{n:'לחם קל (דיאט)',cat:'לחם ופחמימות',cal:170,p:9,f:2,c:31},
+  {n:'פיתה לבנה',cat:'לחם ופחמימות',cal:275,p:9,f:1,c:57},{n:'פיתה מלאה',cat:'לחם ופחמימות',cal:245,p:10,f:2,c:50},
+  {n:'קרקרים (ממוצע)',cat:'לחם ופחמימות',cal:415,p:9,f:10,c:72},{n:'אורז לבן מבושל',cat:'לחם ופחמימות',cal:130,p:2.7,f:0.3,c:28},
+  {n:'אורז מלא מבושל',cat:'לחם ופחמימות',cal:112,p:2.6,f:0.9,c:24},{n:'פסטה מבושלת',cat:'לחם ופחמימות',cal:131,p:5,f:1.1,c:25},
+  {n:'תפוח אדמה מבושל',cat:'לחם ופחמימות',cal:87,p:1.9,f:0.1,c:20},{n:'בטטה מבושלת',cat:'לחם ופחמימות',cal:86,p:1.6,f:0.1,c:20},
+  {n:'קוסקוס מבושל',cat:'לחם ופחמימות',cal:112,p:3.8,f:0.2,c:23},{n:'קינואה מבושלת',cat:'לחם ופחמימות',cal:120,p:4.4,f:1.9,c:21},
+  {n:'שיבולת שועל יבשה',cat:'לחם ופחמימות',cal:389,p:17,f:7,c:66},
+  {n:'עדשים מבושלות',cat:'קטניות',cal:116,p:9,f:0.4,c:20},{n:'חומוס מבושל',cat:'קטניות',cal:164,p:9,f:2.6,c:27},
+  {n:'שעועית שחורה',cat:'קטניות',cal:132,p:9,f:0.5,c:24},{n:'שעועית לבנה',cat:'קטניות',cal:127,p:9,f:0.5,c:23},
+  {n:'אפונה ירוקה',cat:'קטניות',cal:81,p:5,f:0.4,c:14},{n:'חומוס ממרח (2כפות)',cat:'קטניות',cal:94,p:4,f:6,c:8},
+  {n:'טופו',cat:'קטניות',cal:76,p:8,f:4.2,c:1.9},
+  {n:'שקדים',cat:'אגוזים',cal:579,p:21,f:50,c:22},{n:'אגוזי מלך',cat:'אגוזים',cal:654,p:15,f:65,c:14},
+  {n:'אגוזי קשיו',cat:'אגוזים',cal:553,p:18,f:44,c:30},{n:'בוטנים',cat:'אגוזים',cal:567,p:26,f:49,c:16},
+  {n:'גרעיני חמנייה',cat:'אגוזים',cal:584,p:21,f:51,c:20},{n:'גרעיני דלעת',cat:'אגוזים',cal:559,p:30,f:49,c:11},
+  {n:'טחינה גולמית',cat:'אגוזים',cal:595,p:17,f:54,c:22},{n:'פיסטוקים',cat:'אגוזים',cal:562,p:20,f:45,c:28},
+  {n:'שמן זית',cat:'שמנים',cal:884,p:0,f:100,c:0},{n:'חמאה',cat:'שמנים',cal:717,p:0.9,f:81,c:0.1},
+  {n:'מיונז',cat:'שמנים',cal:680,p:1,f:75,c:1},{n:'מיונז לייט',cat:'שמנים',cal:310,p:1,f:32,c:4},
+  {n:'קטשופ',cat:'שמנים',cal:112,p:1.3,f:0.1,c:27},{n:'חרדל',cat:'שמנים',cal:66,p:4,f:4,c:6},
+  {n:'טחינה מוכנה',cat:'שמנים',cal:296,p:9,f:26,c:12},
+  {n:'שוורמה בפיתה',cat:'מסעדה',cal:480,p:28,f:18,c:52},{n:'המבורגר 200g',cat:'מסעדה',cal:420,p:28,f:22,c:28},
+  {n:'פיצה (פרוסה)',cat:'מסעדה',cal:285,p:12,f:10,c:40},{n:'פלאפל כדור',cat:'מסעדה',cal:57,p:2,f:3,c:6},
+  {n:'חומוס מנה (200g)',cat:'מסעדה',cal:330,p:12,f:16,c:36},{n:'שניצל מטוגן (120g)',cat:'מסעדה',cal:380,p:28,f:22,c:18},
+  {n:'סושי ניגירי (יחידה)',cat:'מסעדה',cal:40,p:2.5,f:0.4,c:7},{n:'בורקס גבינה',cat:'מסעדה',cal:260,p:7,f:15,c:26},
+  {n:'שוקולד מריר 85%',cat:'חטיפים',cal:598,p:8,f:43,c:46},{n:'שוקולד חלב',cat:'חטיפים',cal:535,p:8,f:30,c:60},
+  {n:'עוגיות (ממוצע)',cat:'חטיפים',cal:480,p:5,f:20,c:68},{n:'חטיף במבה (30g)',cat:'חטיפים',cal:171,p:4,f:11,c:14},
+  {n:'גלידה וניל',cat:'חטיפים',cal:207,p:3.5,f:11,c:26},{n:'עוגת שוקולד (פרוסה)',cat:'חטיפים',cal:353,p:5,f:18,c:48},
+  {n:'קרואסון',cat:'חטיפים',cal:406,p:8,f:21,c:46},{n:'דונאט',cat:'חטיפים',cal:452,p:5,f:25,c:54},
+  {n:'מיץ תפוזים',cat:'שתייה',cal:45,p:0.7,f:0.2,c:10},{n:'קפה שחור',cat:'שתייה',cal:2,p:0.3,f:0,c:0},
+  {n:'קפה עם חלב (100ml)',cat:'שתייה',cal:30,p:1.5,f:1.5,c:3},{n:'תה (ללא סוכר)',cat:'שתייה',cal:1,p:0,f:0,c:0},
+  {n:'שייק חלבון',cat:'שתייה',cal:120,p:24,f:2,c:5},
+];
+
+const BUILTIN_CATS=[...new Set(BUILTIN_FOODS.map(f=>f.cat))];
+
+// ============ STATE ============
+let logged={};
+let calcItems=[],calcSelectedFood=null,calcActiveCat='הכל';
+let customFoods=JSON.parse(localStorage.getItem('customFoods')||'[]');
+let weightLog=JSON.parse(localStorage.getItem('weightLog')||'[]');
+let cbSelectedFood={}; // per mealId
+let cbItems={}; // per mealId -> [{...}]
+let calcLoggedExtra=[];
+
+function getAllFoods(){return [...BUILTIN_FOODS,...customFoods];}
+function getAllCats(){return['הכל',...new Set(getAllFoods().map(f=>f.cat))];}
+
+// חישוב מאקרו מרשימת מרכיבים [{n, g}]
+function calcFromIngredients(ingredients){
+  const foods=getAllFoods();
+  return ingredients.reduce((tot,ing)=>{
+    const food=foods.find(f=>f.n===ing.n);
+    if(!food) return tot;
+    const r=ing.g/100;
+    return {
+      cal: Math.round(tot.cal + food.cal*r),
+      p:   Math.round((tot.p  + food.p*r)*10)/10,
+      f:   Math.round((tot.f  + food.f*r)*10)/10,
+      c:   Math.round((tot.c  + food.c*r)*10)/10,
+    };
+  },{cal:0,p:0,f:0,c:0});
+}
+
+// החזר אובייקט אופציה עם cal/p/f/c מחושבים
+function resolveOption(opt){
+  if(opt.ingredients && opt.ingredients.length){
+    const m=calcFromIngredients(opt.ingredients);
+    return Object.assign({},opt,m);
+  }
+  return opt; // legacy / manual
+}
+
+// ============ INIT ============
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('dateDisplay').textContent=new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  populateDbSelects();
+  renderMeals();updateTotals();renderWeightTab();renderCatFilters();renderDbList();
+});
+
+function populateDbSelects(){
+  const cats=BUILTIN_CATS;
+  ['dbNewCat','editCat'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  });
+  ['dbCatFilter'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML='<option value="">כל הקטגוריות</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  });
+}
+
+// ============ MEALS ============
+function renderMeals(){
+  const container=document.getElementById('mealsContainer');
+  const openCards=new Set([...container.querySelectorAll('.meal-card.open')].map(c=>c.id));
+  container.innerHTML='';
+  MEALS.forEach(meal=>{
+    const isLogged=logged[meal.id]!==undefined;
+    const isCustomLogged=!!logged[meal.id+'_custom'];
+    const loggedOption=isLogged?resolveOption(meal.options[logged[meal.id]]):null;
+    const customLoggedData=isCustomLogged?logged[meal.id+'_custom']:null;
+    const card=document.createElement('div');
+    let cardClass='meal-card';
+    if(isLogged)cardClass+=' logged';
+    else if(isCustomLogged)cardClass+=' custom-logged';
+    if(openCards.has('card-'+meal.id))cardClass+=' open';
+    card.className=cardClass;
+    card.id='card-'+meal.id;
+
+    const displayCal=isLogged?loggedOption.cal:isCustomLogged?customLoggedData.cal:meal.targetCal;
+    const badge=isLogged?'<span class="meal-logged-badge">✓ תפריט</span>':isCustomLogged?'<span class="meal-custom-badge">✓ מותאם</span>':'';
+
+    card.innerHTML=`
+      <div class="meal-header" onclick="toggleMeal('${meal.id}')">
+        <div class="meal-icon ${meal.iconClass}">${meal.icon}</div>
+        <div class="meal-info"><div class="meal-name">${meal.name}</div><div class="meal-time">${meal.time} · יעד: ${meal.targetCal} קל</div></div>
+        ${badge}
+        <div class="meal-cal">${displayCal} קל</div>
+        <div class="meal-arrow">▼</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-options-label">בחרי מהתפריט (${meal.options.length} אפשרויות):</div>
+        ${meal.options.map((opt,oi)=>{
+          const ro=resolveOption(opt);
+          return `
+          <div class="option-row">
+            <button class="option-btn ${isLogged&&logged[meal.id]===oi?'selected':''}" onclick="selectOption('${meal.id}',${oi})">
+              <div><div class="option-name">${opt.name}</div>
+              <div class="option-macros"><span class="p">חלבון: ${ro.p}g</span><span class="f">שומן: ${ro.f}g</span><span class="c">פחמ׳: ${ro.c}g</span></div></div>
+              <div class="option-cal">${ro.cal}</div>
+            </button>
+            <button class="opt-edit-btn" onclick="openOptEdit('${meal.id}',${oi})" title="ערוך">✏️</button>
+            <button class="opt-del-btn" onclick="deleteOption('${meal.id}',${oi})" title="מחק">🗑️</button>
+          </div>`;}).join('')}
+        <div class="add-option-toggle" onclick="toggleAddOption('${meal.id}')">
+          <div class="ao-line"></div>
+          <button class="ao-btn">➕ הוסף אופציה</button>
+          <div class="ao-line"></div>
+        </div>
+        <div id="ao-${meal.id}" style="display:none;" class="add-option-form">
+          <div class="ao-form-title">➕ אופציה חדשה לארוחה זו</div>
+          <input type="text" class="ao-input" id="ao-name-${meal.id}" placeholder="תיאור הארוחה...">
+          <div class="ao-macros-row">
+            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--accent)">קל׳</div><input type="number" class="ao-num" id="ao-cal-${meal.id}" placeholder="0" min="0"></div>
+            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--accent3)">חלבון</div><input type="number" class="ao-num" id="ao-p-${meal.id}" placeholder="0" min="0" step="0.1"></div>
+            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--warning)">שומן</div><input type="number" class="ao-num" id="ao-f-${meal.id}" placeholder="0" min="0" step="0.1"></div>
+            <div class="ao-macro-wrap"><div class="ao-macro-lbl" style="color:var(--accent2)">פחמ׳</div><input type="number" class="ao-num" id="ao-c-${meal.id}" placeholder="0" min="0" step="0.1"></div>
+          </div>
+          <button class="ao-save-btn" onclick="saveNewOption('${meal.id}')">💾 הוסף לתפריט</button>
+        </div>
+        <button class="log-btn" id="logBtn-${meal.id}" onclick="logMeal('${meal.id}')" ${isLogged?'':'disabled'}>${isLogged?'✏️ עדכן':'✅ רשום ארוחה'}</button>
+        ${(isLogged||isCustomLogged)?`<button class="cancel-meal-btn" onclick="cancelMeal('${meal.id}')">🗑️ בטל רישום</button>`:''}
+        <div class="custom-meal-toggle" onclick="toggleCustomBuilder('${meal.id}')">
+          <div class="cmt-line"></div>
+          <button class="cmt-btn">🔧 בני ארוחה מותאמת</button>
+          <div class="cmt-line"></div>
+        </div>
+        <div id="cb-${meal.id}" style="display:none;">
+          ${buildCustomBuilderHTML(meal.id)}
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function buildCustomBuilderHTML(mealId){
+  const items=cbItems[mealId]||[];
+  const tot=items.reduce((a,i)=>({cal:a.cal+i.cal,p:a.p+i.p,f:a.f+i.f,c:a.c+i.c}),{cal:0,p:0,f:0,c:0});
+  return `<div class="custom-builder">
+    <div class="cb-title">🔧 בניית ארוחה מותאמת אישית</div>
+    <div class="cb-search-wrap">
+      <input type="text" class="cb-search" id="cbSearch-${mealId}" placeholder="חפשי מזון מהמאגר..." oninput="onCbSearch('${mealId}')" onblur="hideCbResults('${mealId}')" autocomplete="off">
+      <div class="cb-results" id="cbResults-${mealId}" style="display:none;"></div>
+    </div>
+    <div class="cb-add-row">
+      <input type="number" class="cb-amount" id="cbAmount-${mealId}" value="100" min="1" max="2000">
+      <span class="cb-unit">גרם</span>
+      <button class="cb-add" id="cbAddBtn-${mealId}" onclick="addCbItem('${mealId}')" disabled>➕</button>
+    </div>
+    ${items.length?`<div class="cb-items">${items.map((item,i)=>`
+      <div class="cb-item-row">
+        <div class="cb-item-info"><div class="cb-item-nm">${item.name} <span style="color:var(--text-dim);font-size:10px;">${item.amount}g</span></div>
+        <div class="cb-item-mac">חלבון ${item.p}g · שומן ${item.f}g · פחמ׳ ${item.c}g</div></div>
+        <span class="cb-item-kcal">${item.cal}</span>
+        <button class="ci-del" onclick="removeCbItem('${mealId}',${i})">🗑️</button>
+      </div>`).join('')}</div>
+    <div class="cb-total">
+      <span class="cb-total-label">סה״כ ארוחה</span>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span style="font-size:10px;color:var(--text-dim);">חלבון: <b style="color:var(--accent3)">${Math.round(tot.p)}g</b> שומן: <b style="color:var(--warning)">${Math.round(tot.f)}g</b> פחמ׳: <b style="color:var(--accent2)">${Math.round(tot.c)}g</b></span>
+        <span class="cb-total-cal">${Math.round(tot.cal)}</span>
+      </div>
+    </div>`:''}
+    <button class="cb-save-btn" onclick="saveCustomMeal('${mealId}')" ${items.length?'':'disabled'}>✅ רשום ארוחה מותאמת</button>
+  </div>`;
+}
+
+function toggleCustomBuilder(mealId){
+  const el=document.getElementById('cb-'+mealId);
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+let cbSearchTimeouts={};
+function onCbSearch(mealId){
+  clearTimeout(cbSearchTimeouts[mealId]);
+  cbSearchTimeouts[mealId]=setTimeout(()=>{
+    const q=document.getElementById('cbSearch-'+mealId).value.trim().toLowerCase();
+    const res=document.getElementById('cbResults-'+mealId);
+    const filtered=getAllFoods().filter(f=>q===''||f.n.toLowerCase().includes(q)).slice(0,25);
+    if(!filtered.length){res.style.display='none';return;}
+    res.innerHTML=filtered.map((f,i)=>`
+      <div class="cb-result-item" onmousedown="selectCbFood('${mealId}',${getAllFoods().indexOf(f)})">
+        <div><div class="cb-item-name">${f.n} <span style="color:var(--text-muted);font-size:10px;">${f.cat}</span></div></div>
+        <div class="cb-item-cal">${f.cal} קל/100g</div>
+      </div>`).join('');
+    res.style.display='block';
+  },100);
+}
+function hideCbResults(mealId){setTimeout(()=>{const r=document.getElementById('cbResults-'+mealId);if(r)r.style.display='none';},200);}
+function selectCbFood(mealId,idx){
+  cbSelectedFood[mealId]=getAllFoods()[idx];
+  document.getElementById('cbSearch-'+mealId).value=cbSelectedFood[mealId].n;
+  document.getElementById('cbResults-'+mealId).style.display='none';
+  document.getElementById('cbAddBtn-'+mealId).disabled=false;
+}
+function addCbItem(mealId){
+  const food=cbSelectedFood[mealId];
+  if(!food)return;
+  const amount=parseFloat(document.getElementById('cbAmount-'+mealId).value)||100;
+  const r=amount/100;
+  if(!cbItems[mealId])cbItems[mealId]=[];
+  cbItems[mealId].push({name:food.n,amount,cal:Math.round(food.cal*r),p:Math.round(food.p*r*10)/10,f:Math.round(food.f*r*10)/10,c:Math.round(food.c*r*10)/10});
+  cbSelectedFood[mealId]=null;
+  refreshCustomBuilder(mealId);
+}
+function removeCbItem(mealId,idx){
+  cbItems[mealId].splice(idx,1);
+  refreshCustomBuilder(mealId);
+}
+function refreshCustomBuilder(mealId){
+  const el=document.getElementById('cb-'+mealId);
+  if(el)el.innerHTML=buildCustomBuilderHTML(mealId);
+  el.style.display='block';
+  // restore focus so user can keep adding
+}
+function saveCustomMeal(mealId){
+  const items=cbItems[mealId]||[];
+  if(!items.length)return;
+  const tot=items.reduce((a,i)=>({cal:a.cal+i.cal,p:a.p+i.p,f:a.f+i.f,c:a.c+i.c}),{cal:0,p:0,f:0,c:0});
+  // clear regular log for this meal
+  delete logged[mealId];
+  delete tempSelected[mealId];
+  logged[mealId+'_custom']={cal:Math.round(tot.cal),p:Math.round(tot.p),f:Math.round(tot.f),c:Math.round(tot.c),items};
+  cbItems[mealId]=[];
+  renderMeals();updateTotals();showToast('✅ ארוחה מותאמת נרשמה!');
+}
+
+function toggleMeal(id){document.getElementById('card-'+id).classList.toggle('open');}
+function toggleAddOption(mealId){
+  var el=document.getElementById('ao-'+mealId);
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+function saveNewOption(mealId){
+  var meal=MEALS.find(function(m){return m.id===mealId;});
+  if(!meal)return;
+  var name=document.getElementById('ao-name-'+mealId).value.trim();
+  var cal=parseFloat(document.getElementById('ao-cal-'+mealId).value)||0;
+  var p=parseFloat(document.getElementById('ao-p-'+mealId).value)||0;
+  var f=parseFloat(document.getElementById('ao-f-'+mealId).value)||0;
+  var c=parseFloat(document.getElementById('ao-c-'+mealId).value)||0;
+  if(!name||!cal){showToast('u26a0ufe0f u05d4u05dbu05e0u05e1u05d9 u05e9u05dd u05d5u05e7u05dcu05d5u05e8u05d9u05d5u05ea');return;}
+  meal.options.push({name:name,cal:cal,p:p,f:f,c:c,_custom:true});
+  renderMeals();showToast('u2705 u05d4u05d0u05d5u05e4u05e6u05d9u05d4 u05e0u05d5u05e1u05e4u05d4!');
+  setTimeout(function(){var card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
+}
+function deleteOption(mealId,optIdx){
+  var meal=MEALS.find(function(m){return m.id===mealId;});
+  if(!meal||meal.options.length<=1){showToast('u26a0ufe0f u05d7u05d9u05d9u05d1u05ea u05dcu05d4u05d9u05e9u05d0u05e8 u05dcu05e4u05d7u05d5u05ea u05d0u05d5u05e4u05e6u05d9u05d4 u05d0u05d7u05ea');return;}
+  if(logged[mealId]===optIdx){delete logged[mealId];delete tempSelected[mealId];}
+  meal.options.splice(optIdx,1);
+  if(logged[mealId]!==undefined&&logged[mealId]>=meal.options.length)delete logged[mealId];
+  renderMeals();updateTotals();showToast('ud83duddd1ufe0f u05d4u05d0u05d5u05e4u05e6u05d9u05d4 u05e0u05deu05d7u05e7u05d4');
+  setTimeout(function(){var card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
+}
+function openOptEdit(mealId,optIdx){
+  var meal=MEALS.find(function(m){return m.id===mealId;});
+  var opt=meal.options[optIdx];
+  var resolved=resolveOption(opt);
+  document.getElementById('oem-mealId').value=mealId;
+  document.getElementById('oem-optIdx').value=optIdx;
+  document.getElementById('oem-name').value=opt.name;
+  document.getElementById('oem-cal').value=resolved.cal;
+  document.getElementById('oem-p').value=resolved.p;
+  document.getElementById('oem-f').value=resolved.f;
+  document.getElementById('oem-c').value=resolved.c;
+  // load existing ingredients into builder
+  oemManualOverride=false;
+  oemSelectedFood=null;
+  document.getElementById('oem-ing-search').value='';
+  document.getElementById('oem-ing-add').disabled=true;
+  if(opt.ingredients && opt.ingredients.length){
+    var foods=getAllFoods();
+    oemIngredients=opt.ingredients.map(function(ing){
+      var food=foods.find(function(f){return f.n===ing.n;});
+      var r=ing.g/100;
+      return {
+        name:ing.n, amount:ing.g,
+        cal:food?Math.round(food.cal*r):0,
+        p:food?Math.round(food.p*r*10)/10:0,
+        f:food?Math.round(food.f*r*10)/10:0,
+        c:food?Math.round(food.c*r*10)/10:0,
+      };
+    });
+  } else {
+    oemIngredients=[];
+  }
+  renderOemIngList();
+  oemUpdateTotalsFromIngredients();
+  document.getElementById('optEditModal').style.display='flex';
+}
+
+// === INGREDIENT BUILDER STATE ===
+var oemIngredients=[];
+var oemSelectedFood=null;
+var oemManualOverride=false;
+var oemSearchTimeout=null;
+
+function oemManualMode(){ oemManualOverride=true; }
+
+function oemIngSearch(){
+  clearTimeout(oemSearchTimeout);
+  oemSearchTimeout=setTimeout(function(){
+    var q=document.getElementById('oem-ing-search').value.trim().toLowerCase();
+    var res=document.getElementById('oem-ing-results');
+    var filtered=getAllFoods().filter(function(f){return q===''||f.n.toLowerCase().includes(q);}).slice(0,25);
+    if(!filtered.length){res.style.display='none';return;}
+    var all=getAllFoods();
+    res.innerHTML=filtered.map(function(f){
+      return '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;" onmousedown="oemSelectFood('+all.indexOf(f)+')">'
+        +'<span>'+f.n+'</span><span style="color:var(--accent);font-weight:700;">'+f.cal+' קל</span></div>';
+    }).join('');
+    res.style.display='block';
+  },100);
+}
+
+function oemHideResults(){ setTimeout(function(){document.getElementById('oem-ing-results').style.display='none';},200); }
+
+function oemSelectFood(idx){
+  oemSelectedFood=getAllFoods()[idx];
+  document.getElementById('oem-ing-search').value=oemSelectedFood.n;
+  document.getElementById('oem-ing-results').style.display='none';
+  document.getElementById('oem-ing-add').disabled=false;
+}
+
+function oemAddIngredient(){
+  if(!oemSelectedFood)return;
+  var amount=parseFloat(document.getElementById('oem-ing-amount').value)||100;
+  var r=amount/100;
+  oemIngredients.push({
+    name:oemSelectedFood.n, amount:amount,
+    cal:Math.round(oemSelectedFood.cal*r),
+    p:Math.round(oemSelectedFood.p*r*10)/10,
+    f:Math.round(oemSelectedFood.f*r*10)/10,
+    c:Math.round(oemSelectedFood.c*r*10)/10
+  });
+  oemSelectedFood=null;
+  oemManualOverride=false;
+  document.getElementById('oem-ing-search').value='';
+  document.getElementById('oem-ing-amount').value=100;
+  document.getElementById('oem-ing-add').disabled=true;
+  renderOemIngList();
+  oemUpdateTotalsFromIngredients();
+}
+
+function oemRemoveIngredient(idx){
+  oemIngredients.splice(idx,1);
+  renderOemIngList();
+  if(oemIngredients.length>0){oemUpdateTotalsFromIngredients();}
+}
+
+function renderOemIngList(){
+  var list=document.getElementById('oem-ing-list');
+  if(!oemIngredients.length){list.innerHTML='<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:6px;">הוסיפי מרכיבים מלמעלה</div>';return;}
+  list.innerHTML=oemIngredients.map(function(item,i){
+    return '<div style="display:flex;align-items:center;padding:6px 8px;background:var(--surface2);border-radius:7px;margin-bottom:3px;font-size:12px;">'
+      +'<div style="flex:1"><b>'+item.name+'</b> <span style="color:var(--text-dim);">'+item.amount+'g</span>'
+      +'<div style="font-size:10px;color:var(--text-muted);">חלבון: '+item.p+'g · שומן: '+item.f+'g · פחמ׳: '+item.c+'g</div></div>'
+      +'<span style="font-weight:700;color:var(--accent);margin:0 8px;">'+item.cal+'</span>'
+      +'<button onclick="oemRemoveIngredient('+i+')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 5px;">🗑️</button>'
+      +'</div>';
+  }).join('');
+}
+
+function oemUpdateTotalsFromIngredients(){
+  var tot=oemIngredients.reduce(function(a,i){return{cal:a.cal+i.cal,p:a.p+i.p,f:a.f+i.f,c:a.c+i.c};},{cal:0,p:0,f:0,c:0});
+  var cal=Math.round(tot.cal);
+  var p=Math.round(tot.p*10)/10;
+  var f=Math.round(tot.f*10)/10;
+  var c=Math.round(tot.c*10)/10;
+  document.getElementById('oem-disp-cal').textContent=cal+' קל׳';
+  document.getElementById('oem-disp-p').textContent='חלבון: '+p+'g';
+  document.getElementById('oem-disp-f').textContent='שומן: '+f+'g';
+  document.getElementById('oem-disp-c').textContent='פחמ׳: '+c+'g';
+  // store in hidden fields for save
+  document.getElementById('oem-cal').value=cal;
+  document.getElementById('oem-p').value=p;
+  document.getElementById('oem-f').value=f;
+  document.getElementById('oem-c').value=c;
+  // auto name
+  var nameEl=document.getElementById('oem-name');
+  if(oemIngredients.length>0 && !nameEl.dataset.edited){
+    nameEl.value=oemIngredients.map(function(i){return i.name+(i.amount!==100?' ('+i.amount+'g)':'');}).join(' + ');
+  }
+}
+
+function saveOptionEdit(){
+  var mealId=document.getElementById('oem-mealId').value;
+  var optIdx=parseInt(document.getElementById('oem-optIdx').value);
+  var meal=MEALS.find(function(m){return m.id===mealId;});
+  if(!meal)return;
+  var name=document.getElementById('oem-name').value.trim();
+  var cal=parseFloat(document.getElementById('oem-cal').value)||0;
+  if(!name||!cal){showToast('⚠️ הכנסי שם וקלוריות');return;}
+  meal.options[optIdx]={
+    name:name, cal:cal,
+    p:parseFloat(document.getElementById('oem-p').value)||0,
+    f:parseFloat(document.getElementById('oem-f').value)||0,
+    c:parseFloat(document.getElementById('oem-c').value)||0,
+    ingredients: oemIngredients.map(function(i){return{n:i.name,g:i.amount};})
+  };
+  // if this option was logged, update totals
+  document.getElementById('optEditModal').style.display='none';
+  renderMeals();updateTotals();showToast('✅ האופציה עודכנה!');
+  setTimeout(function(){var card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
+}
+let tempSelected={};
+function selectOption(mealId,optIdx){
+  tempSelected[mealId]=optIdx;
+  document.getElementById('card-'+mealId).querySelectorAll('.option-btn').forEach((b,i)=>b.classList.toggle('selected',i===optIdx));
+  const lb=document.getElementById('logBtn-'+mealId);lb.disabled=false;lb.textContent='✅ רשום ארוחה';
+}
+function cancelMeal(mealId){
+  delete logged[mealId];delete logged[mealId+'_custom'];delete tempSelected[mealId];
+  renderMeals();updateTotals();showToast('🗑️ הרישום בוטל');
+}
+function logMeal(mealId){
+  if(tempSelected[mealId]===undefined&&logged[mealId]===undefined)return;
+  logged[mealId]=tempSelected[mealId]!==undefined?tempSelected[mealId]:logged[mealId];
+  delete logged[mealId+'_custom'];
+  delete tempSelected[mealId];
+  renderMeals();updateTotals();showToast('✅ הארוחה נרשמה!');
+  setTimeout(()=>{const c=document.getElementById('card-'+mealId);if(c)c.classList.remove('open');},200);
+}
+function updateTotals(){
+  let cal=0,p=0,f=0,c=0;
+  MEALS.forEach(m=>{
+    if(logged[m.id]!==undefined){const o=resolveOption(m.options[logged[m.id]]);cal+=o.cal;p+=o.p;f+=o.f;c+=o.c;}
+    else if(logged[m.id+'_custom']){const o=logged[m.id+'_custom'];cal+=o.cal;p+=o.p;f+=o.f;c+=o.c;}
+  });
+  calcLoggedExtra.forEach(ci=>{cal+=ci.cal;p+=ci.p;f+=ci.f;c+=ci.c;});
+  document.getElementById('totalCal').textContent=Math.round(cal);
+  document.getElementById('totalPro').textContent=Math.round(p)+'g';
+  document.getElementById('totalFat').textContent=Math.round(f)+'g';
+  document.getElementById('totalCarb').textContent=Math.round(c)+'g';
+  document.getElementById('calProgress').style.width=Math.min(100,Math.round(cal/GOAL_CAL*100))+'%';
+}
+
+// ============ TABS ============
+function switchTab(tab){
+  ['meals','calc','db','weight'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['meals','calc','db','weight'][i]===tab));
+  if(tab==='weight')renderWeightTab();
+  if(tab==='db')renderDbList();
+}
+
+// ============ CALCULATOR ============
+function renderCatFilters(){
+  document.getElementById('calcCatFilter').innerHTML=getAllCats().map(cat=>
+    `<button class="cat-btn ${cat===calcActiveCat?'active':''}" onclick="setCalcCat('${cat}')">${cat}</button>`
+  ).join('');
+}
+function setCalcCat(cat){calcActiveCat=cat;renderCatFilters();onCalcSearch();}
+let calcSearchTimeout;
+function onCalcSearch(){
+  clearTimeout(calcSearchTimeout);
+  calcSearchTimeout=setTimeout(()=>{
+    const q=document.getElementById('calcSearch').value.trim().toLowerCase();
+    const res=document.getElementById('calcSearchResults');
+    const filtered=getAllFoods().filter(f=>(calcActiveCat==='הכל'||f.cat===calcActiveCat)&&(q===''||f.n.toLowerCase().includes(q))).slice(0,35);
+    if(!filtered.length){res.style.display='none';return;}
+    const all=getAllFoods();
+    res.innerHTML=filtered.map(f=>`
+      <div class="search-result-item" onmousedown="selectCalcFood(${all.indexOf(f)})">
+        <div><div class="sri-name">${f.n}${f._custom?'<span class="custom-tag">שלי</span>':''}</div><div class="sri-cat">${f.cat}</div></div>
+        <div class="sri-cal">${f.cal} קל/100g</div>
+      </div>`).join('');
+    res.style.display='block';
+  },120);
+}
+function hideCalcResults(){setTimeout(()=>{document.getElementById('calcSearchResults').style.display='none';},200);}
+function selectCalcFood(idx){
+  calcSelectedFood=getAllFoods()[idx];
+  document.getElementById('calcSearch').value=calcSelectedFood.n;
+  document.getElementById('calcSearchResults').style.display='none';
+  document.getElementById('calcAddBtn').disabled=false;
+  const p=document.getElementById('calcFoodPreview');p.style.display='block';
+  document.getElementById('cfpName').textContent=calcSelectedFood.n+' — לכל 100g';
+  document.getElementById('cfpMacros').innerHTML=`<span>קל: <b>${calcSelectedFood.cal}</b></span><span style="color:var(--accent3)">חלבון: <b>${calcSelectedFood.p}g</b></span><span style="color:var(--warning)">שומן: <b>${calcSelectedFood.f}g</b></span><span style="color:var(--accent2)">פחמ׳: <b>${calcSelectedFood.c}g</b></span>`;
+}
+function addCalcItem(){
+  if(!calcSelectedFood)return;
+  const amount=parseFloat(document.getElementById('calcAmount').value)||100;
+  const r=amount/100;
+  calcItems.push({name:calcSelectedFood.n,amount,cal:Math.round(calcSelectedFood.cal*r),p:Math.round(calcSelectedFood.p*r*10)/10,f:Math.round(calcSelectedFood.f*r*10)/10,c:Math.round(calcSelectedFood.c*r*10)/10});
+  calcSelectedFood=null;
+  document.getElementById('calcSearch').value='';
+  document.getElementById('calcAmount').value=100;
+  document.getElementById('calcAddBtn').disabled=true;
+  document.getElementById('calcFoodPreview').style.display='none';
+  renderCalcItems();updateTotals();
+}
+function removeCalcItem(idx){calcItems.splice(idx,1);renderCalcItems();updateTotals();}
+function renderCalcItems(){
+  const wrap=document.getElementById('calcItemsWrap');
+  if(!calcItems.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  document.getElementById('calcItemsList').innerHTML=calcItems.map((ci,i)=>`
+    <div class="calc-item">
+      <div class="ci-info"><div class="ci-name">${ci.name}</div><div class="ci-amount">${ci.amount}g</div><div class="ci-macros">חלבון: ${ci.p}g · שומן: ${ci.f}g · פחמ׳: ${ci.c}g</div></div>
+      <div class="ci-cal">${ci.cal}</div>
+      <button class="ci-del" onclick="removeCalcItem(${i})">🗑️</button>
+    </div>`).join('');
+  const tot=calcItems.reduce((a,ci)=>({cal:a.cal+ci.cal,p:a.p+ci.p,f:a.f+ci.f,c:a.c+ci.c}),{cal:0,p:0,f:0,c:0});
+  document.getElementById('ctbCal').textContent=Math.round(tot.cal);
+  document.getElementById('ctbPro').textContent='חלבון: '+Math.round(tot.p)+'g';
+  document.getElementById('ctbFat').textContent='שומן: '+Math.round(tot.f)+'g';
+  document.getElementById('ctbCarb').textContent='פחמ׳: '+Math.round(tot.c)+'g';
+}
+function logCalcToDay(){
+  if(!calcItems.length)return;
+  calcLoggedExtra=[...calcItems];
+  showToast('✅ נוסף לסיכום היום!');updateTotals();
+}
+function clearCalc(){calcItems=[];calcLoggedExtra=[];renderCalcItems();updateTotals();showToast('🗑️ המחשבון נוקה');}
+
+// ============ DATABASE TAB ============
+function addCustomFood(){
+  const n=document.getElementById('dbNewName').value.trim();
+  const cat=document.getElementById('dbNewCat').value;
+  const cal=parseFloat(document.getElementById('dbNewCal').value);
+  const p=parseFloat(document.getElementById('dbNewP').value)||0;
+  const f=parseFloat(document.getElementById('dbNewF').value)||0;
+  const c=parseFloat(document.getElementById('dbNewC').value)||0;
+  if(!n||!cal){showToast('⚠️ הכנסי שם וקלוריות');return;}
+  customFoods.push({n,cat,cal,p,f,c,_custom:true,_id:Date.now()});
+  localStorage.setItem('customFoods',JSON.stringify(customFoods));
+  ['dbNewName','dbNewCal','dbNewP','dbNewF','dbNewC'].forEach(id=>document.getElementById(id).value='');
+  renderDbList();renderCatFilters();
+  showToast('✅ '+n+' נוסף למאגר!');
+}
+
+function renderDbList(){
+  const q=document.getElementById('dbSearch').value.trim().toLowerCase();
+  const catF=document.getElementById('dbCatFilter').value;
+  const all=getAllFoods();
+  const filtered=all.filter(f=>
+    (!q||f.n.toLowerCase().includes(q))&&
+    (!catF||f.cat===catF)
+  );
+  document.getElementById('dbCount').textContent=`מציג ${filtered.length} מתוך ${all.length} פריטים`;
+  const customCount=customFoods.length;
+  const list=document.getElementById('dbList');
+  if(!filtered.length){list.innerHTML='<div class="empty-state">לא נמצאו פריטים</div>';return;}
+  list.innerHTML=filtered.map(f=>{
+    const idx=all.indexOf(f);
+    const isCustom=!!f._custom;
+    return`<div class="db-item-row ${isCustom?'custom-item':''}">
+      <div class="db-item-info">
+        <div class="db-item-name">${isCustom?'<span class="custom-tag">שלי</span>':''} ${f.n}</div>
+        <div class="db-item-sub">${f.cat} · חלבון: ${f.p}g · שומן: ${f.f}g · פחמ׳: ${f.c}g · לכל 100g</div>
+      </div>
+      <div class="db-item-cal">${f.cal} קל</div>
+      <div class="db-item-actions">
+        <button class="db-edit-btn" onclick="openEditModal(${idx})">✏️</button>
+        ${isCustom?`<button class="db-del-btn" onclick="deleteFood(${idx})">🗑️</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openEditModal(idx){
+  const f=getAllFoods()[idx];
+  document.getElementById('editIdx').value=idx;
+  document.getElementById('editName').value=f.n;
+  document.getElementById('editCat').value=f.cat;
+  document.getElementById('editCal').value=f.cal;
+  document.getElementById('editP').value=f.p;
+  document.getElementById('editF').value=f.f;
+  document.getElementById('editC').value=f.c;
+  document.getElementById('editModal').style.display='flex';
+}
+function closeEditModal(e){if(e.target===document.getElementById('editModal'))document.getElementById('editModal').style.display='none';}
+function saveEdit(){
+  const idx=parseInt(document.getElementById('editIdx').value);
+  const all=getAllFoods();
+  const f=all[idx];
+  const updated={
+    n:document.getElementById('editName').value.trim(),
+    cat:document.getElementById('editCat').value,
+    cal:parseFloat(document.getElementById('editCal').value)||f.cal,
+    p:parseFloat(document.getElementById('editP').value)||0,
+    f:parseFloat(document.getElementById('editF').value)||0,
+    c:parseFloat(document.getElementById('editC').value)||0,
+    _custom:f._custom,_id:f._id
+  };
+  if(f._custom){
+    const ci=customFoods.findIndex(x=>x._id===f._id);
+    if(ci>=0)customFoods[ci]=updated;
+    localStorage.setItem('customFoods',JSON.stringify(customFoods));
+  }
+  // for built-in, we only allow viewing — edit is cosmetic for now and won't persist
+  document.getElementById('editModal').style.display='none';
+  renderDbList();showToast('✅ נשמר!');
+}
+function deleteFood(idx){
+  const f=getAllFoods()[idx];
+  if(!f._custom){showToast('⚠️ לא ניתן למחוק פריט מובנה');return;}
+  customFoods=customFoods.filter(x=>x._id!==f._id);
+  localStorage.setItem('customFoods',JSON.stringify(customFoods));
+  renderDbList();renderCatFilters();showToast('🗑️ הפריט נמחק');
+}
+
+// ============ WEIGHT ============
+function saveWeight(){
+  const val=parseFloat(document.getElementById('weightInput').value);
+  if(!val||val<40||val>250){showToast('⚠️ הכנסי משקל תקין');return;}
+  const today=new Date().toLocaleDateString('he-IL');
+  const filtered=weightLog.filter(e=>e.date!==today);
+  filtered.push({date:today,weight:val,ts:Date.now()});
+  filtered.sort((a,b)=>a.ts-b.ts);
+  weightLog=filtered;
+  localStorage.setItem('weightLog',JSON.stringify(weightLog));
+  renderWeightTab();showToast('⚖️ משקל נשמר!');
+  document.getElementById('weightInput').value='';
+}
+function deleteWeight(idx){
+  weightLog.splice(idx,1);
+  localStorage.setItem('weightLog',JSON.stringify(weightLog));
+  renderWeightTab();showToast('🗑️ הרשומה נמחקה');
+}
+function renderWeightTab(){
+  const current=weightLog.length?weightLog[weightLog.length-1].weight:102;
+  document.getElementById('statCurrent').textContent=current;
+  document.getElementById('statDiff').textContent=(current-GOAL_WEIGHT).toFixed(1)+' ק"ג';
+  const list=document.getElementById('weightLogList');
+  if(!weightLog.length){list.innerHTML='<div class="empty-state">עדיין אין רשומות משקל</div>';}
+  else{
+    const rev=[...weightLog].reverse().slice(0,10);
+    list.innerHTML=rev.map((e,i,arr)=>{
+      const prev=arr[i+1];let ds='';
+      if(prev){const d=(e.weight-prev.weight).toFixed(1);ds=`<span class="weight-log-diff ${d<0?'neg':'pos'}">${d>0?'+':''}${d} ק"ג</span>`;}
+      const ri=weightLog.findIndex(w=>w.ts===e.ts);
+      return`<div class="weight-log-item"><span class="weight-log-date">${e.date}</span><span class="weight-log-val">${e.weight} ק"ג</span>${ds}<button class="weight-delete-btn" onclick="deleteWeight(${ri})">🗑️</button></div>`;
+    }).join('');
+  }
+  drawChart();
+}
+function drawChart(){
+  const canvas=document.getElementById('weightChart');const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||320,H=180;canvas.width=W;canvas.height=H;ctx.clearRect(0,0,W,H);
+  const data=weightLog.length?weightLog:[{date:'התחלה',weight:102}];
+  const allW=data.map(e=>e.weight).concat([GOAL_WEIGHT]);
+  const minW=Math.min(...allW)-2,maxW=Math.max(...allW)+2;
+  const pad={top:16,bottom:28,left:10,right:44};
+  const gW=W-pad.left-pad.right,gH=H-pad.top-pad.bottom;
+  const xS=i=>pad.left+(i/Math.max(data.length-1,1))*gW;
+  const yS=w=>pad.top+gH-((w-minW)/(maxW-minW))*gH;
+  const goalY=yS(GOAL_WEIGHT);
+  ctx.strokeStyle='rgba(110,198,160,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(pad.left,goalY);ctx.lineTo(W-pad.right+30,goalY);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(110,198,160,0.8)';ctx.font='bold 10px Heebo';ctx.textAlign='right';ctx.fillText('יעד 75',W-5,goalY+4);
+  if(data.length>1){
+    const grad=ctx.createLinearGradient(0,pad.top,0,H-pad.bottom);
+    grad.addColorStop(0,'rgba(232,132,90,0.3)');grad.addColorStop(1,'rgba(232,132,90,0)');
+    ctx.beginPath();data.forEach((e,i)=>{const x=xS(i),y=yS(e.weight);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.lineTo(xS(data.length-1),H-pad.bottom);ctx.lineTo(xS(0),H-pad.bottom);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();ctx.strokeStyle='#e8845a';ctx.lineWidth=2;
+    data.forEach((e,i)=>{const x=xS(i),y=yS(e.weight);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+  }
+  data.forEach((e,i)=>{
+    const x=xS(i),y=yS(e.weight);
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle='#e8845a';ctx.fill();ctx.strokeStyle='#0f1117';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#f0eee8';ctx.font='bold 10px Heebo';ctx.textAlign='center';ctx.fillText(e.weight,x,y-8);
+    ctx.fillStyle='#4a4f68';ctx.font='9px Heebo';ctx.fillText(e.date.length>6?e.date.slice(0,5):e.date,x,H-pad.bottom+12);
+  });
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+</script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js");
+  });
+}
+</script>
+</body>
+</html>
