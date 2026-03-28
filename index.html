@@ -248,6 +248,22 @@ canvas{width:100%!important;}
 .ao-num:focus{outline:none;border-color:var(--accent2);}
 .ao-save-btn{width:100%;padding:9px;background:var(--accent2);color:#0f1117;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;}
 .modal-field-label{font-size:11px;color:var(--text-dim);margin-bottom:4px;margin-top:10px;font-weight:600;}
+/* DRAG AND DROP */
+.meal-card.dragging{opacity:0.35;border:2px dashed var(--accent3)!important;}
+.meal-card.drag-over{border-color:var(--accent)!important;box-shadow:0 0 0 2px rgba(232,132,90,0.3);}
+.drag-handle{color:var(--text-muted);font-size:15px;padding:0 4px;cursor:grab;flex-shrink:0;touch-action:none;user-select:none;line-height:1;}
+.drag-handle:active{cursor:grabbing;color:var(--accent);}
+/* TIME EDIT */
+.meal-time-wrap{display:flex;align-items:center;gap:5px;margin-top:2px;}
+.meal-time-text{font-size:11px;color:var(--text-dim);}
+.time-edit-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:10px;padding:1px 4px;border-radius:4px;line-height:1;opacity:0;transition:opacity 0.15s;}
+.meal-header:hover .time-edit-btn{opacity:1;}
+.time-edit-row{display:flex;align-items:center;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.time-input{background:var(--surface2);border:1px solid var(--accent3);border-radius:6px;color:var(--text);font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;padding:4px 7px;width:72px;text-align:center;direction:ltr;}
+.time-input:focus{outline:none;border-color:var(--accent);}
+.time-sep{color:var(--text-dim);font-size:11px;}
+.time-save-btn{background:var(--accent3);border:none;border-radius:6px;color:#0f1117;cursor:pointer;font-family:'Heebo',sans-serif;font-size:11px;font-weight:700;padding:4px 12px;}
+.time-cancel-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-family:'Heebo',sans-serif;font-size:11px;padding:4px 8px;}
 </style>
 </head>
 <body>
@@ -670,8 +686,24 @@ function renderMeals(){
 
     card.innerHTML=`
       <div class="meal-header" onclick="toggleMeal('${meal.id}')">
+        <div class="drag-handle" draggable="false" onmousedown="startDrag(event,'${meal.id}')" ontouchstart="startDragTouch(event,'${meal.id}')" onclick="event.stopPropagation()" title="גרור לשינוי סדר">⠿</div>
         <div class="meal-icon ${meal.iconClass}">${meal.icon}</div>
-        <div class="meal-info"><div class="meal-name">${meal.name}</div><div class="meal-time">${meal.time} · יעד: ${meal.targetCal} קל</div></div>
+        <div class="meal-info">
+          <div class="meal-name">${meal.name}</div>
+          <div id="time-display-${meal.id}" class="meal-time-wrap">
+            <span class="meal-time-text">${meal.time} · יעד: ${meal.targetCal} קל</span>
+            <button class="time-edit-btn" onclick="event.stopPropagation();toggleTimeEdit('${meal.id}')" title="ערוך שעות">✏️</button>
+          </div>
+          <div id="time-edit-${meal.id}" style="display:none;" onclick="event.stopPropagation()">
+            <div class="time-edit-row">
+              <input type="text" class="time-input" id="time-from-${meal.id}" value="${meal.time.split('–')[0]||meal.time.split('-')[0]||''}" placeholder="07:00" maxlength="5">
+              <span class="time-sep">עד</span>
+              <input type="text" class="time-input" id="time-to-${meal.id}" value="${meal.time.split('–')[1]||meal.time.split('-')[1]||''}" placeholder="08:00" maxlength="5">
+              <button class="time-save-btn" onclick="saveTime('${meal.id}')">✓</button>
+              <button class="time-cancel-btn" onclick="toggleTimeEdit('${meal.id}')">✕</button>
+            </div>
+          </div>
+        </div>
         ${badge}
         <div class="meal-cal">${displayCal} קל</div>
         <div class="meal-arrow">▼</div>
@@ -814,6 +846,106 @@ function saveCustomMeal(mealId){
 }
 
 function toggleMeal(id){document.getElementById('card-'+id).classList.toggle('open');}
+
+// ========== TIME EDIT ==========
+function toggleTimeEdit(mealId){
+  const disp=document.getElementById('time-display-'+mealId);
+  const edit=document.getElementById('time-edit-'+mealId);
+  const showing=edit.style.display!=='none';
+  disp.style.display=showing?'flex':'none';
+  edit.style.display=showing?'none':'block';
+}
+function saveTime(mealId){
+  const meal=MEALS.find(m=>m.id===mealId);
+  if(!meal)return;
+  const from=(document.getElementById('time-from-'+mealId).value||'').trim();
+  const to=(document.getElementById('time-to-'+mealId).value||'').trim();
+  meal.time=from+(to?'–'+to:'');
+  renderMeals();
+  // reopen card
+  setTimeout(()=>{const c=document.getElementById('card-'+mealId);if(c)c.classList.add('open');},30);
+  showToast('✅ השעות עודכנו');
+}
+
+// ========== DRAG AND DROP ==========
+let dragSrcId=null,dragStartY=0,dragClone=null,dragOffsetY=0;
+
+function startDrag(e,mealId){
+  if(e.button!==0)return;
+  e.preventDefault();
+  dragSrcId=mealId;
+  const card=document.getElementById('card-'+mealId);
+  dragStartY=e.clientY;
+  dragOffsetY=e.clientY-card.getBoundingClientRect().top;
+  card.classList.add('dragging');
+  document.addEventListener('mousemove',onDragMove);
+  document.addEventListener('mouseup',onDragEnd);
+}
+
+function startDragTouch(e,mealId){
+  const touch=e.touches[0];
+  dragSrcId=mealId;
+  const card=document.getElementById('card-'+mealId);
+  dragOffsetY=touch.clientY-card.getBoundingClientRect().top;
+  card.classList.add('dragging');
+  document.addEventListener('touchmove',onDragMoveTouch,{passive:false});
+  document.addEventListener('touchend',onDragEndTouch);
+}
+
+function getCardAtY(y){
+  const container=document.getElementById('mealsContainer');
+  const cards=[...container.querySelectorAll('.meal-card:not(.dragging)')];
+  for(const card of cards){
+    const rect=card.getBoundingClientRect();
+    if(y>=rect.top && y<=rect.bottom) return card;
+  }
+  return null;
+}
+
+function onDragMove(e){
+  if(!dragSrcId)return;
+  // highlight target
+  document.querySelectorAll('.meal-card').forEach(c=>c.classList.remove('drag-over'));
+  const target=getCardAtY(e.clientY);
+  if(target && target.id!=='card-'+dragSrcId) target.classList.add('drag-over');
+}
+function onDragMoveTouch(e){
+  e.preventDefault();
+  const touch=e.touches[0];
+  document.querySelectorAll('.meal-card').forEach(c=>c.classList.remove('drag-over'));
+  const target=getCardAtY(touch.clientY);
+  if(target && target.id!=='card-'+dragSrcId) target.classList.add('drag-over');
+}
+
+function onDragEnd(e){
+  const target=getCardAtY(e.clientY);
+  finishDrag(target);
+  document.removeEventListener('mousemove',onDragMove);
+  document.removeEventListener('mouseup',onDragEnd);
+}
+function onDragEndTouch(e){
+  const touch=e.changedTouches[0];
+  const target=getCardAtY(touch.clientY);
+  finishDrag(target);
+  document.removeEventListener('touchmove',onDragMoveTouch);
+  document.removeEventListener('touchend',onDragEndTouch);
+}
+
+function finishDrag(targetCard){
+  document.querySelectorAll('.meal-card').forEach(c=>{c.classList.remove('dragging');c.classList.remove('drag-over');});
+  if(!targetCard||!dragSrcId)return;
+  const targetId=targetCard.id.replace('card-','');
+  if(targetId===dragSrcId){dragSrcId=null;return;}
+  // swap meals in MEALS array
+  const srcIdx=MEALS.findIndex(m=>m.id===dragSrcId);
+  const tgtIdx=MEALS.findIndex(m=>m.id===targetId);
+  if(srcIdx<0||tgtIdx<0){dragSrcId=null;return;}
+  const [moved]=MEALS.splice(srcIdx,1);
+  MEALS.splice(tgtIdx,0,moved);
+  dragSrcId=null;
+  renderMeals();
+  showToast('↕️ הסדר עודכן');
+}
 function toggleAddOption(mealId){
   var el=document.getElementById('ao-'+mealId);
   el.style.display=el.style.display==='none'?'block':'none';
