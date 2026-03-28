@@ -607,14 +607,55 @@ const BUILTIN_FOODS=[
 
 const BUILTIN_CATS=[...new Set(BUILTIN_FOODS.map(f=>f.cat))];
 
+// ============ PERSISTENCE ============
+const KEY_MEALS='omerTafrit_meals';
+const KEY_LOGGED='omerTafrit_logged';
+const KEY_CALC_EXTRA='omerTafrit_calcExtra';
+
+function saveMealsToStorage(){
+  try{
+    const toSave=MEALS.map(m=>({id:m.id,name:m.name,time:m.time,icon:m.icon,iconClass:m.iconClass,targetCal:m.targetCal,options:m.options}));
+    localStorage.setItem(KEY_MEALS,JSON.stringify(toSave));
+  }catch(e){}
+}
+
+function loadMealsFromStorage(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(KEY_MEALS)||'null');
+    if(!saved||!Array.isArray(saved))return;
+    const builtinById={};
+    MEALS.forEach(m=>{builtinById[m.id]=m;});
+    MEALS.length=0;
+    saved.forEach(s=>{
+      const base=builtinById[s.id]||s;
+      MEALS.push(Object.assign({},base,{time:s.time||base.time,options:s.options||base.options}));
+    });
+    // add any new builtin meals not in saved
+    Object.keys(builtinById).forEach(id=>{
+      if(!MEALS.find(m=>m.id===id))MEALS.push(builtinById[id]);
+    });
+  }catch(e){console.warn('loadMeals',e);}
+}
+
+function saveLoggedToStorage(){
+  try{localStorage.setItem(KEY_LOGGED,JSON.stringify(logged));}catch(e){}
+}
+
+function loadLoggedFromStorage(){
+  try{return JSON.parse(localStorage.getItem(KEY_LOGGED)||'{}');}catch(e){return {};}
+}
+
+// load saved meals before state init
+loadMealsFromStorage();
+
 // ============ STATE ============
-let logged={};
+let logged=loadLoggedFromStorage();
 let calcItems=[],calcSelectedFood=null,calcActiveCat='הכל';
 let customFoods=JSON.parse(localStorage.getItem('customFoods')||'[]');
 let weightLog=JSON.parse(localStorage.getItem('weightLog')||'[]');
-let cbSelectedFood={}; // per mealId
-let cbItems={}; // per mealId -> [{...}]
-let calcLoggedExtra=[];
+let cbSelectedFood={};
+let cbItems={};
+let calcLoggedExtra=JSON.parse(localStorage.getItem(KEY_CALC_EXTRA)||'[]');
 
 function getAllFoods(){return [...BUILTIN_FOODS,...customFoods];}
 function getAllCats(){return['הכל',...new Set(getAllFoods().map(f=>f.cat))];}
@@ -854,6 +895,7 @@ function saveCustomMeal(mealId){
   delete tempSelected[mealId];
   logged[mealId+'_custom']={cal:Math.round(tot.cal),p:Math.round(tot.p),f:Math.round(tot.f),c:Math.round(tot.c),items};
   cbItems[mealId]=[];
+  saveLoggedToStorage();
   renderMeals();updateTotals();showToast('✅ ארוחה מותאמת נרשמה!');
 }
 
@@ -873,6 +915,7 @@ function saveTime(mealId){
   const from=(document.getElementById('time-from-'+mealId).value||'').trim();
   const to=(document.getElementById('time-to-'+mealId).value||'').trim();
   meal.time=from+(to?'–'+to:'');
+  saveMealsToStorage();
   renderMeals();
   // reopen card
   setTimeout(()=>{const c=document.getElementById('card-'+mealId);if(c)c.classList.add('open');},30);
@@ -955,6 +998,7 @@ function finishDrag(targetCard){
   const [moved]=MEALS.splice(srcIdx,1);
   MEALS.splice(tgtIdx,0,moved);
   dragSrcId=null;
+  saveMealsToStorage();
   renderMeals();
   showToast('↕️ הסדר עודכן');
 }
@@ -1075,8 +1119,8 @@ function saveNewOption(mealId){
     name,
     ingredients: items.map(i=>({n:i.name,g:i.amount}))
   });
-  // reset
   aoItems[mealId]=[];
+  saveMealsToStorage();
   renderMeals();
   showToast('✅ האופציה נוספה!');
   setTimeout(()=>{const card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
@@ -1087,6 +1131,7 @@ function deleteOption(mealId,optIdx){
   if(logged[mealId]===optIdx){delete logged[mealId];delete tempSelected[mealId];}
   meal.options.splice(optIdx,1);
   if(logged[mealId]!==undefined&&logged[mealId]>=meal.options.length)delete logged[mealId];
+  saveMealsToStorage();saveLoggedToStorage();
   renderMeals();updateTotals();showToast('ud83duddd1ufe0f u05d4u05d0u05d5u05e4u05e6u05d9u05d4 u05e0u05deu05d7u05e7u05d4');
   setTimeout(function(){var card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
 }
@@ -1237,6 +1282,7 @@ function saveOptionEdit(){
     ingredients: oemIngredients.map(function(i){return{n:i.name,g:i.amount};})
   };
   // if this option was logged, update totals
+  saveMealsToStorage();
   document.getElementById('optEditModal').style.display='none';
   renderMeals();updateTotals();showToast('✅ האופציה עודכנה!');
   setTimeout(function(){var card=document.getElementById('card-'+mealId);if(card)card.classList.add('open');},50);
@@ -1249,6 +1295,7 @@ function selectOption(mealId,optIdx){
 }
 function cancelMeal(mealId){
   delete logged[mealId];delete logged[mealId+'_custom'];delete tempSelected[mealId];
+  saveLoggedToStorage();
   renderMeals();updateTotals();showToast('🗑️ הרישום בוטל');
 }
 function logMeal(mealId){
@@ -1256,6 +1303,7 @@ function logMeal(mealId){
   logged[mealId]=tempSelected[mealId]!==undefined?tempSelected[mealId]:logged[mealId];
   delete logged[mealId+'_custom'];
   delete tempSelected[mealId];
+  saveLoggedToStorage();
   renderMeals();updateTotals();showToast('✅ הארוחה נרשמה!');
   setTimeout(()=>{const c=document.getElementById('card-'+mealId);if(c)c.classList.remove('open');},200);
 }
@@ -1347,9 +1395,10 @@ function renderCalcItems(){
 function logCalcToDay(){
   if(!calcItems.length)return;
   calcLoggedExtra=[...calcItems];
+  try{localStorage.setItem(KEY_CALC_EXTRA,JSON.stringify(calcLoggedExtra));}catch(e){}
   showToast('✅ נוסף לסיכום היום!');updateTotals();
 }
-function clearCalc(){calcItems=[];calcLoggedExtra=[];renderCalcItems();updateTotals();showToast('🗑️ המחשבון נוקה');}
+function clearCalc(){calcItems=[];calcLoggedExtra=[];try{localStorage.removeItem(KEY_CALC_EXTRA);}catch(e){}renderCalcItems();updateTotals();showToast('🗑️ המחשבון נוקה');}
 
 // ============ DATABASE TAB ============
 function addCustomFood(){
